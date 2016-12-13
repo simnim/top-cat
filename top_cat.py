@@ -5,7 +5,6 @@ import base64
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
 import sys
-import json
 
 SLACK_API_TOKEN = "xoxp-116638699686-115285855585-115287802689-6f8293f619125c15b2430d164208ac1c"
 
@@ -58,13 +57,13 @@ for img in just_imgur_jpgs:
             "token": SLACK_API_TOKEN,
             "channel": "#top_cat",
             "text": "Top cat jpg on imgur (via /r/aww)",
-            "attachments": json.dumps([
+            "attachments": [
                     {
                         "fallback": "Top cat jpg on imgur (via /r/aww)",
                         "title": links_map_to_title[img],
                         "image_url": img
                     }
-                ])
+                ]
         }
         requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
         break
