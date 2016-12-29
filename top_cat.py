@@ -23,8 +23,16 @@ def fix_imgur_url(url):
 credentials = GoogleCredentials.get_application_default()
 service = discovery.build('vision', 'v1', credentials=credentials)
 
-r = requests.get("https://www.reddit.com/r/aww/top.json")
-j = r.json()
+# Try really hard to get the data. Sometimes the reddit API gives back empty jsons.
+for attempt in range(20):
+    r = requests.get("https://www.reddit.com/r/aww/top.json")
+    j = r.json()
+    if j.get("data") is not None:
+        break
+    else:
+        print > sys.stderr, "Attempt", attempt, "at reddit api call failed. Trying again..."
+    print > sys.stderr, "Succesfully queried the reddit api"
+
 
 links = [ i["data"]["url"] for i in j["data"]["children"]]
 fixed_links = [ fix_imgur_url(u) for u in links ]
@@ -42,7 +50,7 @@ for img in just_imgur_jpgs:
             },
             'features': [{
                 'type': 'LABEL_DETECTION',
-                'maxResults': 1
+                'maxResults': 5
             }]
         }]
     })
@@ -56,6 +64,8 @@ for img in just_imgur_jpgs:
             "token": SLACK_API_TOKEN,
             "channel": "#top_cat",
             "text": "Top cat jpg on imgur (via /r/aww)",
+            "username": "TopCat",
+            "as_user": "TopCat",
             "attachments": json.dumps([
                     {
                         "fallback": "Top cat jpg on imgur (via /r/aww)",
