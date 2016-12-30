@@ -28,10 +28,11 @@ for attempt in range(20):
     r = requests.get("https://www.reddit.com/r/aww/top.json")
     j = r.json()
     if j.get("data") is not None:
-        print >> sys.stderr, "Succesfully queried the reddit api"
+        print >> sys.stderr, "Succesfully queried the reddit api after", attempt, "attempts"
         break
     else:
         print >> sys.stderr, "Attempt", attempt, "at reddit api call failed. Trying again..."
+assert j.get("data") is not None, "Can't query the reddit api! (Maybe try again later?)"
 
 
 links = [ i["data"]["url"] for i in j["data"]["children"]]
