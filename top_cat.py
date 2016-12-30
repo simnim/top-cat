@@ -6,6 +6,34 @@ from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
 import sys
 import json
+import sqlite3
+import hashlib
+
+conn = sqlite3.connect('top_cat.db')
+cur = conn.cursor()
+# Create the top_cat table and index
+map(lambda s: cur.execute(s),
+    ["""
+        CREATE TABLE IF NOT EXISTS
+            top_cat (
+                timestamp_ins text not null default current_timestamp,
+                url           text not null,
+                file_hash     text not null,
+                title         text not null
+            );
+        """
+    ,
+        """
+        CREATE INDEX IF NOT EXISTS
+            top_cats_file_hash_index
+            on  top_cat (
+                    file_hash
+                );
+        """
+    ])
+
+
+
 
 SLACK_API_TOKEN = "xoxp-116638699686-115285855585-115287802689-6f8293f619125c15b2430d164208ac1c"
 
@@ -28,7 +56,7 @@ for attempt in range(20):
     r = requests.get("https://www.reddit.com/r/aww/top.json")
     j = r.json()
     if j.get("data") is not None:
-        print >> sys.stderr, "Succesfully queried the reddit api after", attempt, "attempts"
+        print >> sys.stderr, "Succesfully queried the reddit api after", attempt+1, "attempts"
         break
     else:
         print >> sys.stderr, "Attempt", attempt, "at reddit api call failed. Trying again..."
@@ -60,20 +88,32 @@ for img in just_imgur_jpgs:
     label = response['responses'][0]['labelAnnotations'][0]['description']
     print >> sys.stderr, 'Found label: %s for %s' % (label, img)
     if label == "cat":
-        print img, links_map_to_title[img]
-        slack_payload = {
-            "token": SLACK_API_TOKEN,
-            "channel": "#top_cat",
-            "text": "Top cat jpg on imgur (via /r/aww)",
-            "username": "TopCat",
-            "as_user": "TopCat",
-            "attachments": json.dumps([
-                    {
-                        "fallback": "Top cat jpg on imgur (via /r/aww)",
-                        "title": links_map_to_title[img],
-                        "image_url": img
-                    }
-                ])
-        }
-        requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
+        #Check if we already have the file in the db
+        file_hash = hashlib.sha1(image_content).hexdigest()
+        cur.execute('SELECT * FROM top_cat WHERE file_hash=?', (file_hash,))
+        if cur.fetchone():
+            #We already got it.
+            print "IMAGE ALREADY IN DB:", img, links_map_to_title[img]
+        else:
+            # Add it to the db:
+            cur.execute("INSERT INTO top_cat (url, file_hash, title) values (?,?,?)",
+                        (img, file_hash, links_map_to_title[img]))
+            conn.commit()
+
+            print img, links_map_to_title[img]
+            slack_payload = {
+                "token": SLACK_API_TOKEN,
+                "channel": "#top_cat",
+                "text": "Top cat jpg on imgur (via /r/aww)",
+                "username": "TopCat",
+                "as_user": "TopCat",
+                "attachments": json.dumps([
+                        {
+                            "fallback": "Top cat jpg on imgur (via /r/aww)",
+                            "title": links_map_to_title[img],
+                            "image_url": img
+                        }
+                    ])
+            }
+            requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
         break
