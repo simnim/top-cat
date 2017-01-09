@@ -15,18 +15,19 @@ cur = conn.cursor()
 map(lambda s: cur.execute(s),
     ["""
         CREATE TABLE IF NOT EXISTS
-            top_cat (
+            image (
                 timestamp_ins text not null default current_timestamp,
                 url           text not null,
                 file_hash     text not null,
-                title         text not null
+                title         text not null,
+                top_label     text not null
             );
         """
     ,
         """
         CREATE INDEX IF NOT EXISTS
-            top_cats_file_hash_index
-            on  top_cat (
+            image_file_hash_index
+            on  image (
                     file_hash
                 );
         """
@@ -60,7 +61,7 @@ for attempt in range(20):
         break
     else:
         print >> sys.stderr, "Attempt", attempt, "at reddit api call failed. Trying again..."
-assert j.get("data") is not None, "Can't query the reddit api! (Maybe try again later?)"
+assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe try again later?)"
 
 
 links = [ i["data"]["url"] for i in j["data"]["children"]]
@@ -72,48 +73,53 @@ just_imgur_jpgs = [l for l in fixed_links if "imgur" in l and ".jpg" in l]
 for img in just_imgur_jpgs:
     img_response = requests.get(img, stream=True)
     image_content = base64.b64encode(img_response.content)
-    service_request = service.images().annotate(body={
-        'requests': [{
-            'image': {
-                'content': image_content.decode('UTF-8')
-            },
-            'features': [{
-                'type': 'LABEL_DETECTION',
-                'maxResults': 5
+    #Check if we already have the file in the db
+    file_hash = hashlib.sha1(image_content).hexdigest()
+    cur.execute('SELECT top_label FROM image WHERE file_hash=?', (file_hash,))
+    label = cur.fetchone()
+    if label:
+        #We already got it.
+        print "IMAGE ALREADY IN DB:", img, links_map_to_title[img]
+    else:
+        # Annotate image with google image api
+        service_request = service.images().annotate(body={
+            'requests': [{
+                'image': {
+                    'content': image_content.decode('UTF-8')
+                },
+                'features': [{
+                    'type': 'LABEL_DETECTION',
+                    'maxResults': 5
+                }]
             }]
-        }]
-    })
-    response = service_request.execute()
-    print >> sys.stderr, response
-    label = response['responses'][0]['labelAnnotations'][0]['description']
-    print >> sys.stderr, 'Found label: %s for %s' % (label, img)
-    if label == "cat":
-        #Check if we already have the file in the db
-        file_hash = hashlib.sha1(image_content).hexdigest()
-        cur.execute('SELECT * FROM top_cat WHERE file_hash=?', (file_hash,))
-        if cur.fetchone():
-            #We already got it.
-            print "IMAGE ALREADY IN DB:", img, links_map_to_title[img]
-        else:
-            # Add it to the db:
-            cur.execute("INSERT INTO top_cat (url, file_hash, title) values (?,?,?)",
-                        (img, file_hash, links_map_to_title[img]))
-            conn.commit()
+        })
+        response = service_request.execute()
+        print >> sys.stderr, response
+        label = response['responses'][0]['labelAnnotations'][0]['description']
+        print >> sys.stderr, 'Found label: %s for %s' % (label, img)
 
-            print img, links_map_to_title[img]
-            slack_payload = {
-                "token": SLACK_API_TOKEN,
-                "channel": "#top_cat",
-                "text": "Top cat jpg on imgur (via /r/aww)",
-                "username": "TopCat",
-                "as_user": "TopCat",
-                "attachments": json.dumps([
-                        {
-                            "fallback": "Top cat jpg on imgur (via /r/aww)",
-                            "title": links_map_to_title[img],
-                            "image_url": img
-                        }
-                    ])
-            }
-            requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
+        # Add it to the db:
+        cur.execute("INSERT INTO image (url, file_hash, title, top_label) values (?,?,?,?)",
+                    (img, file_hash, links_map_to_title[img], label))
+        conn.commit()
+
+    if label == "cat":
+        print img, links_map_to_title[img]
+        slack_payload = {
+            "token": SLACK_API_TOKEN,
+            "channel": "#top_cat",
+            "text": "Top cat jpg on imgur (via /r/aww)",
+            "username": "TopCat",
+            "as_user": "TopCat",
+            "attachments": json.dumps([
+                    {
+                        "fallback": "Top cat jpg on imgur (via /r/aww)",
+                        "title": links_map_to_title[img],
+                        "image_url": img
+                    }
+                ])
+        }
+        requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
+
+        # We found the top cat, no need to keep going through images
         break
