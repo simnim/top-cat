@@ -74,12 +74,15 @@ for img in just_imgur_jpgs:
     img_response = requests.get(img, stream=True)
     image_content = base64.b64encode(img_response.content)
     #Check if we already have the file in the db
+    retrieved_from_db = False
     file_hash = hashlib.sha1(image_content).hexdigest()
     cur.execute('SELECT top_label FROM image WHERE file_hash=?', (file_hash,))
-    label = cur.fetchone()
-    if label:
+    top_label = cur.fetchone()
+    if top_label:
         #We already got it.
-        print "IMAGE ALREADY IN DB:", img, links_map_to_title[img]
+        top_label = top_label[0]
+        retrieved_from_db = True
+        print "IMAGE ALREADY IN DB:", top_label, img, links_map_to_title[img]
     else:
         # Annotate image with google image api
         service_request = service.images().annotate(body={
@@ -95,31 +98,32 @@ for img in just_imgur_jpgs:
         })
         response = service_request.execute()
         print >> sys.stderr, response
-        label = response['responses'][0]['labelAnnotations'][0]['description']
-        print >> sys.stderr, 'Found label: %s for %s' % (label, img)
+        top_label = response['responses'][0]['labelAnnotations'][0]['description']
+        print >> sys.stderr, 'Found label: %s for %s' % (top_label, img)
 
         # Add it to the db:
         cur.execute("INSERT INTO image (url, file_hash, title, top_label) values (?,?,?,?)",
-                    (img, file_hash, links_map_to_title[img], label))
+                    (img, file_hash, links_map_to_title[img], top_label))
         conn.commit()
 
-    if label == "cat":
+    if top_label == "cat":
         print img, links_map_to_title[img]
-        slack_payload = {
-            "token": SLACK_API_TOKEN,
-            "channel": "#top_cat",
-            "text": "Top cat jpg on imgur (via /r/aww)",
-            "username": "TopCat",
-            "as_user": "TopCat",
-            "attachments": json.dumps([
-                    {
-                        "fallback": "Top cat jpg on imgur (via /r/aww)",
-                        "title": links_map_to_title[img],
-                        "image_url": img
-                    }
-                ])
-        }
-        requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
+        if not retrieved_from_db:
+            slack_payload = {
+                "token": SLACK_API_TOKEN,
+                "channel": "#top_cat",
+                "text": "Top cat jpg on imgur (via /r/aww)",
+                "username": "TopCat",
+                "as_user": "TopCat",
+                "attachments": json.dumps([
+                        {
+                            "fallback": "Top cat jpg on imgur (via /r/aww)",
+                            "title": links_map_to_title[img],
+                            "image_url": img
+                        }
+                    ])
+            }
+            requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
 
         # We found the top cat, no need to keep going through images
         break
