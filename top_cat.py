@@ -68,7 +68,10 @@ links = [ i["data"]["url"] for i in j["data"]["children"]]
 fixed_links = [ fix_imgur_url(u) for u in links ]
 links_map_to_title = dict(zip(fixed_links, [ i["data"]["title"] for i in j["data"]["children"]]))
 
-just_imgur_jpgs = [l for l in fixed_links if "imgur" in l and ".jpg" in l]
+def is_jpg(url):
+    return requests.get(url, stream=True).headers.get('content-type') == 'image/jpeg'
+
+just_imgur_jpgs = [l for l in fixed_links if is_jpg(l)]
 
 for img in just_imgur_jpgs:
     img_response = requests.get(img, stream=True)
