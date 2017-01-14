@@ -13,7 +13,7 @@ conn = sqlite3.connect('top_cat.db')
 cur = conn.cursor()
 # Create the top_cat table and index
 map(lambda s: cur.execute(s),
-    ["""
+    [   """
         CREATE TABLE IF NOT EXISTS
             image (
                 timestamp_ins text not null default current_timestamp,
@@ -71,9 +71,9 @@ links_map_to_title = dict(zip(fixed_links, [ i["data"]["title"] for i in j["data
 def is_jpg(url):
     return requests.get(url, stream=True).headers.get('content-type') == 'image/jpeg'
 
-just_imgur_jpgs = [l for l in fixed_links if is_jpg(l)]
+just_jpgs = [l for l in fixed_links if is_jpg(l)]
 
-for img in just_imgur_jpgs:
+for img in just_jpgs:
     img_response = requests.get(img, stream=True)
     image_content = base64.b64encode(img_response.content)
     #Check if we already have the file in the db
