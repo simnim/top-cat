@@ -8,6 +8,8 @@ import sys
 import json
 import sqlite3
 import hashlib
+# Because the reddit api links use escaped html strings ie &amp;
+from xml.sax.saxutils import unescape
 
 conn = sqlite3.connect('top_cat.db')
 cur = conn.cursor()
@@ -65,13 +67,22 @@ assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe tr
 
 
 links = [ i["data"]["url"] for i in j["data"]["children"]]
-fixed_links = [ fix_imgur_url(u) for u in links ]
+fixed_links = [ unescape(fix_imgur_url(u)) for u in links ]
 links_map_to_title = dict(zip(fixed_links, [ i["data"]["title"] for i in j["data"]["children"]]))
+
+# for l in fixed_links:
+#     print l
+#
+# print
+
 
 def is_jpg(url):
     return requests.get(url, stream=True).headers.get('content-type') == 'image/jpeg'
 
 just_jpgs = [l for l in fixed_links if is_jpg(l)]
+
+# for l in just_jpgs:
+#     print l
 
 for img in just_jpgs:
     img_response = requests.get(img, stream=True)
@@ -100,7 +111,9 @@ for img in just_jpgs:
             }]
         })
         response = service_request.execute()
-        print >> sys.stderr, response
+        print >> sys.stderr, "Labels for " + img + ':'
+        for annot in response['responses'][0]['labelAnnotations']:
+            print >> sys.stderr, '    ' + annot['description'] + ' = ' + str(annot['score'])
         top_label = response['responses'][0]['labelAnnotations'][0]['description']
         print >> sys.stderr, 'Found label: %s for %s' % (top_label, img)
 
