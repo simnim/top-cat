@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+# Nick Hahner 2017
+
 import requests
 import re
 import base64
@@ -11,6 +14,14 @@ import hashlib
 # Because the reddit api links use escaped html strings ie &amp;
 from xml.sax.saxutils import unescape
 
+# How many times do we try to query the reddit api before we say fuck it?
+MAX_REDDIT_API_ATTEMPTS = 20
+
+# Get google vision api credentials
+credentials = GoogleCredentials.get_application_default()
+service = discovery.build('vision', 'v1', credentials=credentials)
+
+# Connect to the db. It creates the file if necessary.
 conn = sqlite3.connect('top_cat.db')
 cur = conn.cursor()
 # Create the top_cat table and index
@@ -41,21 +52,21 @@ map(lambda s: cur.execute(s),
 SLACK_API_TOKEN = "xoxp-116638699686-115285855585-115287802689-6f8293f619125c15b2430d164208ac1c"
 
 def fix_imgur_url(url):
+    """
+    Sometimes people post imgur urls without the image extension.
+    This grabs the extension and fixes the link so we go straight to the image:
+    eg "http://i.imgur.com/mc316Un" -> "http://i.imgur.com/mc316Un.jpg"
+    """
     if "imgur" in url:
         if '.' not in url.split("/")[-1]:
             r = requests.get(url)
             img_link = re.findall('<link rel="image_src"\s*href="([^"]+)"/>', r.text)
-            if img_link:
-                return img_link[0]
-            else:
-                return "Failure"
+            assert img_link, "imgur url fixing failed for " + url
+            return img_link[0]
     return url
 
-credentials = GoogleCredentials.get_application_default()
-service = discovery.build('vision', 'v1', credentials=credentials)
-
 # Try really hard to get the data. Sometimes the reddit API gives back empty jsons.
-for attempt in range(20):
+for attempt in range(MAX_REDDIT_API_ATTEMPTS):
     r = requests.get("https://www.reddit.com/r/aww/top.json")
     j = r.json()
     if j.get("data") is not None:
@@ -70,19 +81,10 @@ links = [ i["data"]["url"] for i in j["data"]["children"]]
 fixed_links = [ unescape(fix_imgur_url(u)) for u in links ]
 links_map_to_title = dict(zip(fixed_links, [ i["data"]["title"] for i in j["data"]["children"]]))
 
-# for l in fixed_links:
-#     print l
-#
-# print
-
-
 def is_jpg(url):
     return requests.get(url, stream=True).headers.get('content-type') == 'image/jpeg'
 
 just_jpgs = [l for l in fixed_links if is_jpg(l)]
-
-# for l in just_jpgs:
-#     print l
 
 for img in just_jpgs:
     img_response = requests.get(img, stream=True)
@@ -93,7 +95,7 @@ for img in just_jpgs:
     cur.execute('SELECT top_label FROM image WHERE file_hash=?', (file_hash,))
     top_label = cur.fetchone()
     if top_label:
-        #We already got it.
+        #We've already got it.
         top_label = top_label[0]
         retrieved_from_db = True
         print "IMAGE ALREADY IN DB:", top_label, img, links_map_to_title[img]
@@ -116,6 +118,8 @@ for img in just_jpgs:
             print >> sys.stderr, '    ' + annot['description'] + ' = ' + str(annot['score'])
         top_label = response['responses'][0]['labelAnnotations'][0]['description']
         print >> sys.stderr, 'Found label: %s for %s' % (top_label, img)
+
+        #FIXME: Add code to record all the detected lables in the db.
 
         # Add it to the db:
         cur.execute("INSERT INTO image (url, file_hash, title, top_label) values (?,?,?,?)",
