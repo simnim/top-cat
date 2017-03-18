@@ -188,3 +188,8 @@ for img in just_jpgs:
 
         # We found the top cat, no need to keep going through images
         break
+
+if top_label != 'cat':
+    # WHAT?!?!?!?! No cats???
+    print "The internet is broken. No top cat found..."
+    
