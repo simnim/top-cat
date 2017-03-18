@@ -29,11 +29,22 @@ map(lambda s: cur.execute(s),
     [   """
         CREATE TABLE IF NOT EXISTS
             image (
+                image_id      INTEGER PRIMARY KEY,
                 timestamp_ins text not null default current_timestamp,
                 url           text not null,
                 file_hash     text not null,
                 title         text not null,
                 top_label     text not null
+            );
+        """
+    ,
+        """
+        CREATE TABLE IF NOT EXISTS
+            image_labels (
+                image_id      int not null,
+                label         text not null,
+                score         REAL,
+                FOREIGN KEY(image_id) REFERENCES image(image_id)
             );
         """
     ,
@@ -65,7 +76,7 @@ def fix_imgur_url(url):
             return img_link[0]
     return url
 
-# Try really hard to get the data. Sometimes the reddit API gives back empty jsons.
+# Try really hard to get reddit api results. Sometimes the reddit API gives back empty jsons.
 for attempt in range(MAX_REDDIT_API_ATTEMPTS):
     r = requests.get("https://www.reddit.com/r/aww/top.json")
     j = r.json()
@@ -84,6 +95,7 @@ links_map_to_title = dict(zip(fixed_links, [ i["data"]["title"] for i in j["data
 def is_jpg(url):
     return requests.get(url, stream=True).headers.get('content-type') == 'image/jpeg'
 
+#just_jpgs = filter(is_jpg, fixed_links)
 just_jpgs = [l for l in fixed_links if is_jpg(l)]
 
 for img in just_jpgs:
@@ -108,26 +120,39 @@ for img in just_jpgs:
                 },
                 'features': [{
                     'type': 'LABEL_DETECTION',
-                    'maxResults': 5
+                    'maxResults': 10
                 }]
             }]
         })
         response = service_request.execute()
-        print >> sys.stderr, "Labels for " + img + ':'
-        for annot in response['responses'][0]['labelAnnotations']:
-            print >> sys.stderr, '    ' + annot['description'] + ' = ' + str(annot['score'])
-        top_label = response['responses'][0]['labelAnnotations'][0]['description']
-        print >> sys.stderr, 'Found label: %s for %s' % (top_label, img)
-
-        #FIXME: Add code to record all the detected lables in the db.
-
-        # Add it to the db:
+        assert  response.get('responses') and \
+                len(response['responses']) > 0 and\
+                response['responses'][0].get('labelAnnotations') \
+            , \
+                "Google vision api didn't seem to like the image... it returned no results. Wat do?"
+        labels_and_scores = [ (annot['description'], annot['score']) for annot in response['responses'][0]['labelAnnotations'] ]
+        top_label = labels_and_scores[0][0]
+        # Add the image to the db:
         cur.execute("INSERT INTO image (url, file_hash, title, top_label) values (?,?,?,?)",
                     (img, file_hash, links_map_to_title[img], top_label))
         conn.commit()
+        # Now get back the image_id of what we just inserted...
+        cur.execute('SELECT image_id FROM image WHERE file_hash=?', (file_hash,))
+        image_id = cur.fetchone()[0]
+
+        # Print out each label and label's score. Also store each result in the db.
+        print >> sys.stderr, "Labels for " + img + ':'
+        for label, score in labels_and_scores:
+            print >> sys.stderr, '    ' + label + ' = ' + str(score)
+            cur.execute("INSERT INTO image_labels (image_id, label, score) values (?,?,?)",
+                        (image_id, label, score))
+            conn.commit()
+
 
     if top_label == "cat":
-        print img, links_map_to_title[img]
+        print "TOP CAT FOUND!"
+        print "Titled:", links_map_to_title[img]
+        print img
         if not retrieved_from_db:
             slack_payload = {
                 "token": SLACK_API_TOKEN,
