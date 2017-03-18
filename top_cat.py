@@ -11,11 +11,27 @@ import sys
 import json
 import sqlite3
 import hashlib
+import os
+
 # Because the reddit api links use escaped html strings ie &amp;
 from xml.sax.saxutils import unescape
 
+# Let's query the config file
+if os.path.isfile("~/.top_cat.json"):
+    try:
+        top_cat_config = json.loads(open("~/.top_cat.json").read())
+    except Exception as e:
+        print >> sys.stderr, "Malformed config file at '~/.top_cat.json'"
+        exit(1)
+else:
+    top_cat_config = dict()
+
 # How many times do we try to query the reddit api before we say fuck it?
-MAX_REDDIT_API_ATTEMPTS = 20
+MAX_REDDIT_API_ATTEMPTS = top_cat_config.get('MAX_REDDIT_API_ATTEMPTS', 20)
+SLACK_API_TOKEN = top_cat_config.get('SLACK_API_TOKEN')
+SLACK_CHANNEL = top_cat_config.get("SLACK_CHANNEL", '#top_cat')
+POST_TO_SLACK_TF = top_cat_config.get("POST_TO_SLACK_TF", False)
+assert (not POST_TO_SLACK_TF or (POST_TO_SLACK_TF and SLACK_API_TOKEN)), "If you want to post to slack then you need to add an api key to the config file!"
 
 # Get google vision api credentials
 credentials = GoogleCredentials.get_application_default()
@@ -59,8 +75,6 @@ map(lambda s: cur.execute(s),
 
 
 
-
-SLACK_API_TOKEN = "xoxp-116638699686-115285855585-115287802689-6f8293f619125c15b2430d164208ac1c"
 
 def fix_imgur_url(url):
     """
@@ -156,7 +170,7 @@ for img in just_jpgs:
         if not retrieved_from_db:
             slack_payload = {
                 "token": SLACK_API_TOKEN,
-                "channel": "#top_cat",
+                "channel": SLACK_CHANNEL,
                 "text": "Top cat jpg on imgur (via /r/aww)",
                 "username": "TopCat",
                 "as_user": "TopCat",
