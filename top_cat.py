@@ -28,6 +28,7 @@ else:
 
 # How many times do we try to query the reddit api before we say fuck it?
 MAX_REDDIT_API_ATTEMPTS = top_cat_config.get('MAX_REDDIT_API_ATTEMPTS', 20)
+# https://api.slack.com/custom-integrations/legacy-tokens
 SLACK_API_TOKEN = top_cat_config.get('SLACK_API_TOKEN')
 SLACK_CHANNEL = top_cat_config.get("SLACK_CHANNEL", '#top_cat')
 POST_TO_SLACK_TF = top_cat_config.get("POST_TO_SLACK_TF", False)
