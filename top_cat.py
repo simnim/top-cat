@@ -17,9 +17,10 @@ import os
 from xml.sax.saxutils import unescape
 
 # Let's query the config file
-if os.path.isfile("~/.top_cat.json"):
+if os.path.isfile(os.path.expanduser("~/.top_cat.json")):
     try:
-        top_cat_config = json.loads(open("~/.top_cat.json").read())
+        top_cat_config = json.loads(open(os.path.expanduser("~/.top_cat.json")).read())
+        print 'got here'
     except Exception as e:
         print >> sys.stderr, "Malformed config file at '~/.top_cat.json'"
         exit(1)
@@ -168,7 +169,7 @@ for img in just_jpgs:
         print "TOP CAT FOUND!"
         print "Titled:", links_map_to_title[img]
         print img
-        if not retrieved_from_db:
+        if not retrieved_from_db and POST_TO_SLACK_TF:
             slack_payload = {
                 "token": SLACK_API_TOKEN,
                 "channel": SLACK_CHANNEL,
