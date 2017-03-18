@@ -1,0 +1,6 @@
+{
+      "SLACK_API_TOKEN": "YOUR_API_TOKEN_GOES_HERE"
+    , "MAX_REDDIT_API_ATTEMPTS": 20
+    , "SLACK_CHANNEL": "#top_cat"
+    , "POST_TO_SLACK_TF": true
+}
