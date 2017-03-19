@@ -3,4 +3,5 @@
     , "MAX_REDDIT_API_ATTEMPTS": 20
     , "SLACK_CHANNEL": "#top_cat"
     , "POST_TO_SLACK_TF": true
+    , "LABEL_TO_SEARCH_FOR": "cat"
 }

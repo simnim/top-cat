@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 
-# Nick Hahner 2017
+"""
+Nick Hahner 2017
+Ever wanted to automate finding the top cute cat picture from /r/aww to send to your friends?
+All you need to do is run ./top_cat.py and your life will change forever.
+
+You'll need to create ~/.top_cat.json if you want to find dogs instead!
+You can also add your slack api key to ^ if you want a nifty slack integration.
+All items in the config file are optional.
+"""
 
 import requests
 import re
@@ -16,24 +24,31 @@ import os
 # Because the reddit api links use escaped html strings ie &amp;
 from xml.sax.saxutils import unescape
 
+
+
+CONFIG_FILE_LOC = os.path.expanduser("~/.top_cat.json")
 # Let's query the config file
-if os.path.isfile(os.path.expanduser("~/.top_cat.json")):
+if os.path.isfile(CONFIG_FILE_LOC):
     try:
-        top_cat_config = json.loads(open(os.path.expanduser("~/.top_cat.json")).read())
+        top_cat_config = json.loads(open(CONFIG_FILE_LOC).read())
         print 'got here'
     except Exception as e:
-        print >> sys.stderr, "Malformed config file at '~/.top_cat.json'"
+        print >> sys.stderr, "Malformed config file at '%s'" % (CONFIG_FILE_LOC)
         exit(1)
 else:
     top_cat_config = dict()
 
-# How many times do we try to query the reddit api before we say fuck it?
+# How many times do we try to query the reddit api before we give up?
 MAX_REDDIT_API_ATTEMPTS = top_cat_config.get('MAX_REDDIT_API_ATTEMPTS', 20)
+LABEL_TO_SEARCH_FOR = top_cat_config.get('LABEL_TO_SEARCH_FOR', 'cat')
 # https://api.slack.com/custom-integrations/legacy-tokens
 SLACK_API_TOKEN = top_cat_config.get('SLACK_API_TOKEN')
 SLACK_CHANNEL = top_cat_config.get("SLACK_CHANNEL", '#top_cat')
 POST_TO_SLACK_TF = top_cat_config.get("POST_TO_SLACK_TF", False)
 assert (not POST_TO_SLACK_TF or (POST_TO_SLACK_TF and SLACK_API_TOKEN)), "If you want to post to slack then you need to add an api key to the config file!"
+
+
+
 
 # Get google vision api credentials
 credentials = GoogleCredentials.get_application_default()
@@ -87,6 +102,7 @@ def fix_imgur_url(url):
     if "imgur" in url:
         if '.' not in url.split("/")[-1]:
             r = requests.get(url)
+            # I could have used bs4, but it'd actually be more verbose in this case.
             img_link = re.findall('<link rel="image_src"\s*href="([^"]+)"/>', r.text)
             assert img_link, "imgur url fixing failed for " + url
             return img_link[0]
@@ -165,20 +181,20 @@ for img in just_jpgs:
             conn.commit()
 
 
-    if top_label == "cat":
-        print "TOP CAT FOUND!"
+    if top_label == LABEL_TO_SEARCH_FOR:
+        print "TOP %s FOUND!" % (LABEL_TO_SEARCH_FOR.upper())
         print "Titled:", links_map_to_title[img]
         print img
         if not retrieved_from_db and POST_TO_SLACK_TF:
             slack_payload = {
                 "token": SLACK_API_TOKEN,
                 "channel": SLACK_CHANNEL,
-                "text": "Top cat jpg on imgur (via /r/aww)",
+                "text": "Top %s jpg on imgur (via /r/aww)" % (LABEL_TO_SEARCH_FOR),
                 "username": "TopCat",
                 "as_user": "TopCat",
                 "attachments": json.dumps([
                         {
-                            "fallback": "Top cat jpg on imgur (via /r/aww)",
+                            "fallback": "Top %s jpg on imgur (via /r/aww)" % (LABEL_TO_SEARCH_FOR),
                             "title": links_map_to_title[img],
                             "image_url": img
                         }
@@ -189,7 +205,6 @@ for img in just_jpgs:
         # We found the top cat, no need to keep going through images
         break
 
-if top_label != 'cat':
+if top_label != LABEL_TO_SEARCH_FOR:
     # WHAT?!?!?!?! No cats???
-    print "The internet is broken. No top cat found..."
-    
+    print "The internet is broken. No top_cat found..."
