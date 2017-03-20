@@ -31,7 +31,6 @@ CONFIG_FILE_LOC = os.path.expanduser("~/.top_cat.json")
 if os.path.isfile(CONFIG_FILE_LOC):
     try:
         top_cat_config = json.loads(open(CONFIG_FILE_LOC).read())
-        print 'got here'
     except Exception as e:
         print >> sys.stderr, "Malformed config file at '%s'" % (CONFIG_FILE_LOC)
         exit(1)
