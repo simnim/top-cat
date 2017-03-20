@@ -207,4 +207,4 @@ for img in just_jpgs:
 
 if top_label != LABEL_TO_SEARCH_FOR:
     # WHAT?!?!?!?! No cats???
-    print "The internet is broken. No top_cat found..."
+    print "WARNING: The internet is broken. No top_cat found..."
