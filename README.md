@@ -2,6 +2,8 @@
 The goal is really just to automate finding cute cat pictures. Enjoy.
 This project is just for fun. It has no business prospects. It's not enterprise grade (tm).
 
+Check https://www.facebook.com/top.felis.catus/ for the latest top cat on /r/aww
+
 # Purpose:
 The purpose of this repo is to find the top cat picture at the moment at /r/aww
 The project aims to enable:
