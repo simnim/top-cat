@@ -15,6 +15,7 @@ import re
 import base64
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
+import facebook
 import sys
 import json
 import sqlite3
@@ -30,7 +31,7 @@ CONFIG_FILE_LOC = os.path.expanduser("~/.top_cat.json")
 # Let's query the config file
 if os.path.isfile(CONFIG_FILE_LOC):
     try:
-        top_cat_config = json.loads(open(CONFIG_FILE_LOC).read())
+        top_cat_config = json.load(open(CONFIG_FILE_LOC))
     except Exception as e:
         print >> sys.stderr, "Malformed config file at '%s'" % (CONFIG_FILE_LOC)
         exit(1)
@@ -45,8 +46,9 @@ SLACK_API_TOKEN = top_cat_config.get('SLACK_API_TOKEN')
 SLACK_CHANNEL = top_cat_config.get("SLACK_CHANNEL", '#top_cat')
 POST_TO_SLACK_TF = top_cat_config.get("POST_TO_SLACK_TF", False)
 assert (not POST_TO_SLACK_TF or (POST_TO_SLACK_TF and SLACK_API_TOKEN)), "If you want to post to slack then you need to add an api key to the config file!"
-
-
+FB_PAGE_ACCESS_TOKEN = top_cat_config.get("FB_PAGE_ACCESS_TOKEN")
+POST_TO_FB_TF = top_cat_config.get("POST_TO_FB_TF", False)
+assert (not POST_TO_FB_TF or (POST_TO_FB_TF and FB_PAGE_ACCESS_TOKEN)), "If you want to post to FB then you need to add a fb page_access_token to the config"
 
 
 # Get google vision api credentials
@@ -184,22 +186,32 @@ for img in just_jpgs:
         print "TOP %s FOUND!" % (LABEL_TO_SEARCH_FOR.upper())
         print "Titled:", links_map_to_title[img]
         print img
-        if not retrieved_from_db and POST_TO_SLACK_TF:
-            slack_payload = {
-                "token": SLACK_API_TOKEN,
-                "channel": SLACK_CHANNEL,
-                "text": "Top %s jpg on imgur (via /r/aww)" % (LABEL_TO_SEARCH_FOR),
-                "username": "TopCat",
-                "as_user": "TopCat",
-                "attachments": json.dumps([
-                        {
-                            "fallback": "Top %s jpg on imgur (via /r/aww)" % (LABEL_TO_SEARCH_FOR),
-                            "title": links_map_to_title[img],
-                            "image_url": img
-                        }
-                    ])
-            }
-            requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
+        if not retrieved_from_db :
+            if POST_TO_SLACK_TF:
+                slack_payload = {
+                    "token": SLACK_API_TOKEN,
+                    "channel": SLACK_CHANNEL,
+                    "text": "Top %s jpg on imgur (via /r/aww)" % (LABEL_TO_SEARCH_FOR),
+                    "username": "TopCat",
+                    "as_user": "TopCat",
+                    "attachments": json.dumps([
+                            {
+                                "fallback": "Top %s jpg on imgur (via /r/aww)" % (LABEL_TO_SEARCH_FOR),
+                                "title": links_map_to_title[img],
+                                "image_url": img
+                            }
+                        ])
+                }
+                requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
+
+            if POST_TO_FB_TF:
+                fb_api = facebook.GraphAPI(top_cat_config['FB_PAGE_ACCESS_TOKEN'])
+                attachment =  {
+                    'name': 'top_cat',
+                    'link': img,
+                    'picture': img
+                }
+                status = api.put_wall_post(message=links_map_to_title[img], attachment=attachment)
 
         # We found the top cat, no need to keep going through images
         break
