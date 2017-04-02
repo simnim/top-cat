@@ -211,7 +211,7 @@ for img in just_jpgs:
                     'link': img,
                     'picture': img
                 }
-                status = api.put_wall_post(message=links_map_to_title[img], attachment=attachment)
+                status = fb_api.put_wall_post(message=links_map_to_title[img], attachment=attachment)
 
         # We found the top cat, no need to keep going through images
         break
