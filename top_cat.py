@@ -21,6 +21,7 @@ import json
 import sqlite3
 import hashlib
 import os
+from time import sleep
 
 # Because the reddit api links use escaped html strings ie &amp;
 from xml.sax.saxutils import unescape
@@ -118,6 +119,7 @@ for attempt in range(MAX_REDDIT_API_ATTEMPTS):
         break
     else:
         print >> sys.stderr, "Attempt", attempt, "at reddit api call failed. Trying again..."
+    sleep(0.1)
 assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe try again later?)"
 
 
