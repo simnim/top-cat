@@ -56,7 +56,7 @@ credentials = GoogleCredentials.get_application_default()
 service = discovery.build('vision', 'v1', credentials=credentials)
 
 # Connect to the db. It creates the file if necessary.
-conn = sqlite3.connect('top_cat.db')
+conn = sqlite3.connect(os.path.expanduser("~/.top_cat.db"))
 cur = conn.cursor()
 # Create the top_cat table and index
 map(lambda s: cur.execute(s),
