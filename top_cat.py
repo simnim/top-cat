@@ -22,6 +22,9 @@ import sqlite3
 import hashlib
 import os
 from time import sleep
+import StringIO
+from PIL import Image
+from io import BytesIO
 
 # Because the reddit api links use escaped html strings ie &amp;
 from xml.sax.saxutils import unescape
@@ -93,6 +96,12 @@ map(lambda s: cur.execute(s),
     ])
 
 
+def get_thumb_content(img_content, image_max_size = (1000,1000)):
+    pil_img = Image.open(StringIO.StringIO(img_content))
+    pil_img.thumbnail(image_max_size, Image.ANTIALIAS)
+    b = BytesIO()
+    pil_img.save(b, format='jpeg')
+    return b.getvalue()
 
 
 def fix_imgur_url(url):
@@ -134,11 +143,13 @@ def is_jpg(url):
 just_jpgs = [l for l in fixed_links if is_jpg(l)]
 
 for img in just_jpgs:
-    img_response = requests.get(img, stream=True)
-    image_content = base64.b64encode(img_response.content)
+    img_content = requests.get(img, stream=True).content
+    img_resized = get_thumb_content(img_content)
+    # Make sure it's small enough for the vision api
+    image_content_b64 = base64.b64encode(img_resized)
     #Check if we already have the file in the db
     retrieved_from_db = False
-    file_hash = hashlib.sha1(image_content).hexdigest()
+    file_hash = hashlib.sha1(image_content_b64).hexdigest()
     cur.execute('SELECT top_label FROM image WHERE file_hash=?', (file_hash,))
     top_label = cur.fetchone()
     if top_label:
@@ -151,7 +162,7 @@ for img in just_jpgs:
         service_request = service.images().annotate(body={
             'requests': [{
                 'image': {
-                    'content': image_content.decode('UTF-8')
+                    'content': image_content_b64.decode('UTF-8')
                 },
                 'features': [{
                     'type': 'LABEL_DETECTION',
