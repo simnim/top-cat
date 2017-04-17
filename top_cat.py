@@ -156,7 +156,7 @@ for img in just_jpgs:
         #We've already got it.
         top_label = top_label[0]
         retrieved_from_db = True
-        print "IMAGE ALREADY IN DB:", top_label, img, links_map_to_title[img]
+        print "IMAGE ALREADY IN DB:", top_label, img, unicode(links_map_to_title[img])
     else:
         # Annotate image with google image api
         service_request = service.images().annotate(body={
@@ -180,7 +180,7 @@ for img in just_jpgs:
         top_label = labels_and_scores[0][0]
         # Add the image to the db:
         cur.execute("INSERT INTO image (url, file_hash, title, top_label) values (?,?,?,?)",
-                    (img, file_hash, links_map_to_title[img], top_label))
+                    (img, file_hash, unicode(links_map_to_title[img]), top_label))
         conn.commit()
         # Now get back the image_id of what we just inserted...
         cur.execute('SELECT image_id FROM image WHERE file_hash=?', (file_hash,))
@@ -197,7 +197,7 @@ for img in just_jpgs:
 
     if top_label == LABEL_TO_SEARCH_FOR:
         print "TOP %s FOUND!" % (LABEL_TO_SEARCH_FOR.upper())
-        print "Titled:", links_map_to_title[img]
+        print "Titled:", unicode(links_map_to_title[img])
         print img
         if not retrieved_from_db :
             if POST_TO_SLACK_TF:
@@ -210,7 +210,7 @@ for img in just_jpgs:
                     "attachments": json.dumps([
                             {
                                 "fallback": "Top %s jpg on imgur (via /r/aww)" % (LABEL_TO_SEARCH_FOR),
-                                "title": links_map_to_title[img],
+                                "title": unicode(links_map_to_title[img]),
                                 "image_url": img
                             }
                         ])
@@ -224,7 +224,7 @@ for img in just_jpgs:
                     'link': img,
                     'picture': img
                 }
-                status = fb_api.put_wall_post(message=links_map_to_title[img], attachment=attachment)
+                status = fb_api.put_wall_post(message=unicode(links_map_to_title[img]), attachment=attachment)
 
         # We found the top cat, no need to keep going through images
         break
