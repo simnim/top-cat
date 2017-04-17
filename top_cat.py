@@ -134,7 +134,7 @@ assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe tr
 
 links = [ i["data"]["url"] for i in j["data"]["children"]]
 fixed_links = [ unescape(fix_imgur_url(u)) for u in links ]
-links_map_to_title = dict(zip(fixed_links, [ i["data"]["title"] for i in j["data"]["children"]]))
+links_map_to_title = dict(zip(fixed_links, [ unicode(i["data"]["title"]) for i in j["data"]["children"]]))
 
 def is_jpg(url):
     return requests.get(url, stream=True).headers.get('content-type') == 'image/jpeg'
