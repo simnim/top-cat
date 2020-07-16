@@ -18,6 +18,7 @@ from oauth2client.client import GoogleCredentials
 import facebook
 import sys
 import json
+import toml
 import sqlite3
 import hashlib
 import os
@@ -30,29 +31,30 @@ from io import BytesIO
 from xml.sax.saxutils import unescape
 
 
+# Start off with default config and override with our config
+this_script_dir = os.path.dirname(os.path.realpath(__file__))
+default_config = toml.load('top_cat_deault.toml')
 
-CONFIG_FILE_LOC = os.path.expanduser("~/.top_cat.json")
+CONFIG_FILE_LOC = os.path.expanduser("~/.top_cat.toml")
 # Let's query the config file
 if os.path.isfile(CONFIG_FILE_LOC):
     try:
-        top_cat_config = json.load(open(CONFIG_FILE_LOC))
+        top_cat_user_config = toml.load(CONFIG_FILE_LOC)
     except Exception as e:
         print >> sys.stderr, "Malformed config file at '%s'" % (CONFIG_FILE_LOC)
         exit(1)
 else:
-    top_cat_config = dict()
+    top_cat_user_config = dict()
 
-# How many times do we try to query the reddit api before we give up?
-MAX_REDDIT_API_ATTEMPTS = top_cat_config.get('MAX_REDDIT_API_ATTEMPTS', 20)
-LABEL_TO_SEARCH_FOR = top_cat_config.get('LABEL_TO_SEARCH_FOR', 'cat')
-# https://api.slack.com/custom-integrations/legacy-tokens
-SLACK_API_TOKEN = top_cat_config.get('SLACK_API_TOKEN')
-SLACK_CHANNEL = top_cat_config.get("SLACK_CHANNEL", '#top_cat')
-POST_TO_SLACK_TF = top_cat_config.get("POST_TO_SLACK_TF", False)
-assert (not POST_TO_SLACK_TF or (POST_TO_SLACK_TF and SLACK_API_TOKEN)), "If you want to post to slack then you need to add an api key to the config file!"
-FB_PAGE_ACCESS_TOKEN = top_cat_config.get("FB_PAGE_ACCESS_TOKEN")
-POST_TO_FB_TF = top_cat_config.get("POST_TO_FB_TF", False)
-assert (not POST_TO_FB_TF or (POST_TO_FB_TF and FB_PAGE_ACCESS_TOKEN)), "If you want to post to FB then you need to add a fb page_access_token to the config"
+top_cat_config = {**default_config, **top_cat_user_config}
+
+# If we plan on posting to social media, let's make sure we have tokens to try
+assert ( not POST_TO_SLACK_TF
+            or (POST_TO_SLACK_TF and SLACK_API_TOKEN and SLACK_API_TOKEN != 'YOUR__SLACK__API_TOKEN_GOES_HERE')
+        ), "If you want to post to slack then you need to add an api key to the config file!"
+assert ( not POST_TO_FB_TF
+            or (POST_TO_FB_TF and FB_PAGE_ACCESS_TOKEN and FB_PAGE_ACCESS_TOKEN != 'YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE')
+        ), "If you want to post to FB then you need to add a fb page_access_token to the config"
 
 
 # Get google vision api credentials
