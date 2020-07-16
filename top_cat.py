@@ -33,7 +33,7 @@ from xml.sax.saxutils import unescape
 
 # Start off with default config and override with our config
 this_script_dir = os.path.dirname(os.path.realpath(__file__))
-default_config = toml.load('top_cat_deault.toml')
+default_config = toml.load(this_script_dir+'/top_cat_deault.toml')
 
 CONFIG_FILE_LOC = os.path.expanduser("~/.top_cat.toml")
 # Let's query the config file
