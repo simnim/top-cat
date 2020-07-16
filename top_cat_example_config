@@ -1,9 +1,0 @@
-{
-      "LABEL_TO_SEARCH_FOR": "cat"
-    , "MAX_REDDIT_API_ATTEMPTS": 30
-    , "POST_TO_FB_TF": true
-    , "FB_PAGE_ACCESS_TOKEN": "YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE"
-    , "POST_TO_SLACK_TF": true
-    , "SLACK_API_TOKEN": "YOUR__SLACK__API_TOKEN_GOES_HERE"
-    , "SLACK_CHANNEL": "#top_cat"
-}
