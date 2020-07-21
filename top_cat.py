@@ -112,7 +112,8 @@ def fix_imgur_url(url):
     This grabs the extension and fixes the link so we go straight to the image or video:
     eg "http://i.imgur.com/mc316Un" -> "http://i.imgur.com/mc316Un.jpg"
     """
-    if "imgur" in url:
+    if "imgur.com" in url:
+        # Don't bother if it already ends in .jpg
         if '.' not in url.split("/")[-1]:
             r = requests.get(url)
             # I could have used bs4, but it'd actually be more verbose in this case.
@@ -120,18 +121,31 @@ def fix_imgur_url(url):
             video_link = re.findall('<meta property="og:video"\s*content="([^"]+)"\s*/>', r.text)
             assert img_link or video_link, "imgur url fixing failed for " + url
             return (img_link or video_link)[0]
+        else:
+            # Just in case it ends in .gifv
+            return url.replace('.gifv','.mp4')
     return url
 
-def fix_giphy_urls(url):
+def fix_giphy_url(url):
     if 'gfycat.com' in url:
         # keep just the caPiTALIZed key and return a nice predictable url
         return re.sub('.*gfycat.com/([^-]+)-.*', r'https://thumbs.gfycat.com/\1-mobile.mp4', url)
     return url
 
-def query_reddit_api():
+def fix_redd_url(url):
+    return url+'/DASH_480' if 'v.redd.it' in url else url
+
+def fix_url_in_dict(d):
+    if d['gfycat']:
+        return fix_giphy_url(d['gfycat'])
+    else:
+        return fix_redd_url(fix_imgur_url(d['url']))
+
+
+def query_reddit_api(limit=10):
     # Try really hard to get reddit api results. Sometimes the reddit API gives back empty jsons.
     for attempt in range(MAX_REDDIT_API_ATTEMPTS):
-        r = requests.get("https://www.reddit.com/r/aww/top.json", headers={'User-Agent': 'linux:top-cat:v0.1'})
+        r = requests.get(f"https://www.reddit.com/r/aww/top.json?limit={limit}", headers={'User-Agent': 'linux:top-cat:v0.1'})
         j = r.json()
         if j.get("data") is not None:
             print( "Succesfully queried the reddit api after", attempt+1, "attempts" , file=sys.stderr)
@@ -141,9 +155,10 @@ def query_reddit_api():
         sleep(0.1)
     assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe try again later?)"
     # We've got the data for sure now.
-    nice_jsons = pyjq.all('.data.children[].data|{title, url, giphy: .media.oembed.thumbnail_url}', j)
-    # fix imgur urls:
-    nice_jsons = [ {**d, 'url':fix_imgur_url(d['url'])} for d in nice_jsons ]
+    nice_jsons = pyjq.all('.data.children[].data|{title, url, gfycat: .media.oembed.thumbnail_url}', j)
+    # fix imgur and giphy urls:
+    nice_jsons = [ {**d, 'url':fix_url_in_dict(d)} for d in nice_jsons ]
+    return nice_jsons
 
 
 links = [ i["data"]["url"] for i in j["data"]["children"]]
