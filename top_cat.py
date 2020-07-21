@@ -108,8 +108,8 @@ def get_thumb_content(img_content, image_max_size = (1000,1000)):
 
 def fix_imgur_url(url):
     """
-    Sometimes people post imgur urls without the image extension.
-    This grabs the extension and fixes the link so we go straight to the image:
+    Sometimes people post imgur urls without the image or video extension.
+    This grabs the extension and fixes the link so we go straight to the image or video:
     eg "http://i.imgur.com/mc316Un" -> "http://i.imgur.com/mc316Un.jpg"
     """
     if "imgur" in url:
@@ -117,8 +117,9 @@ def fix_imgur_url(url):
             r = requests.get(url)
             # I could have used bs4, but it'd actually be more verbose in this case.
             img_link = re.findall('<link rel="image_src"\s*href="([^"]+)"/>', r.text)
-            assert img_link, "imgur url fixing failed for " + url
-            return img_link[0]
+            video_link = re.findall('<meta property="og:video"\s*content="([^"]+)"\s*/>', r.text)
+            assert img_link or video_link, "imgur url fixing failed for " + url
+            return (img_link or video_link)[0]
     return url
 
 # Try really hard to get reddit api results. Sometimes the reddit API gives back empty jsons.
