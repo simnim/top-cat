@@ -41,7 +41,7 @@ if os.path.isfile(CONFIG_FILE_LOC):
     try:
         top_cat_user_config = toml.load(CONFIG_FILE_LOC)
     except Exception as e:
-        print >> sys.stderr, "Malformed config file at '%s'" % (CONFIG_FILE_LOC)
+        print( "Malformed config file at '%s'" % (CONFIG_FILE_LOC) , file=sys.stderr)
         exit(1)
 else:
     top_cat_user_config = dict()
@@ -122,17 +122,28 @@ def fix_imgur_url(url):
             return (img_link or video_link)[0]
     return url
 
-# Try really hard to get reddit api results. Sometimes the reddit API gives back empty jsons.
-for attempt in range(MAX_REDDIT_API_ATTEMPTS):
-    r = requests.get("https://www.reddit.com/r/aww/top.json")
-    j = r.json()
-    if j.get("data") is not None:
-        print >> sys.stderr, "Succesfully queried the reddit api after", attempt+1, "attempts"
-        break
-    else:
-        print >> sys.stderr, "Attempt", attempt, "at reddit api call failed. Trying again..."
-    sleep(0.1)
-assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe try again later?)"
+def fix_giphy_urls(url):
+    if 'gfycat.com' in url:
+        # keep just the caPiTALIZed key and return a nice predictable url
+        return re.sub('.*gfycat.com/([^-]+)-.*', r'https://thumbs.gfycat.com/\1-mobile.mp4', url)
+    return url
+
+def query_reddit_api():
+    # Try really hard to get reddit api results. Sometimes the reddit API gives back empty jsons.
+    for attempt in range(MAX_REDDIT_API_ATTEMPTS):
+        r = requests.get("https://www.reddit.com/r/aww/top.json", headers={'User-Agent': 'linux:top-cat:v0.1'})
+        j = r.json()
+        if j.get("data") is not None:
+            print( "Succesfully queried the reddit api after", attempt+1, "attempts" , file=sys.stderr)
+            break
+        else:
+            print( "Attempt", attempt, "at reddit api call failed. Trying again..." , file=sys.stderr)
+        sleep(0.1)
+    assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe try again later?)"
+    # We've got the data for sure now.
+    nice_jsons = pyjq.all('.data.children[].data|{title, url, giphy: .media.oembed.thumbnail_url}', j)
+    # fix imgur urls:
+    nice_jsons = [ {**d, 'url':fix_imgur_url(d['url'])} for d in nice_jsons ]
 
 
 links = [ i["data"]["url"] for i in j["data"]["children"]]
@@ -159,7 +170,7 @@ for img in just_jpgs:
         #We've already got it.
         top_label = top_label[0]
         retrieved_from_db = True
-        print "IMAGE ALREADY IN DB:", top_label, img, unicode(links_map_to_title[img])
+        print("IMAGE ALREADY IN DB:", top_label, img, unicode(links_map_to_title[img]))
     else:
         # Annotate image with google image api
         service_request = service.images().annotate(body={
@@ -189,19 +200,19 @@ for img in just_jpgs:
         cur.execute('SELECT image_id FROM image WHERE file_hash=?', (file_hash,))
         image_id = cur.fetchone()[0]
 
-        # Print out each label and label's score. Also store each result in the db.
-        print >> sys.stderr, "Labels for " + img + ':'
+        # Print out each label and label's score. Also store each result in the db.)
+        print( "Labels for " + img + ':' , file=sys.stderr)
         for label, score in labels_and_scores:
-            print >> sys.stderr, '    ' + label + ' = ' + str(score)
+            print( '    ' + label + ' = ' + str(score) , file=sys.stderr)
             cur.execute("INSERT INTO image_labels (image_id, label, score) values (?,?,?)",
                         (image_id, label, score))
             conn.commit()
 
 
     if top_label == LABEL_TO_SEARCH_FOR:
-        print "TOP %s FOUND!" % (LABEL_TO_SEARCH_FOR.upper())
-        print "Titled:", unicode(links_map_to_title[img])
-        print img
+        print("TOP %s FOUND!" % (LABEL_TO_SEARCH_FOR.upper()))
+        print("Titled:", unicode(links_map_to_title[img]))
+        print(img)
         if not retrieved_from_db :
             if POST_TO_SLACK_TF:
                 slack_payload = {
@@ -234,4 +245,4 @@ for img in just_jpgs:
 
 if top_label != LABEL_TO_SEARCH_FOR:
     # WHAT?!?!?!?! No cats???
-    print "WARNING: The internet is broken. No top_cat found..."
+    print("WARNING: The internet is broken. No top_cat found...")
