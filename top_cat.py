@@ -26,35 +26,38 @@ from time import sleep
 import StringIO
 from PIL import Image
 from io import BytesIO
+from tempfile import NamedTemporaryFile
 
 # Because the reddit api links use escaped html strings ie &amp;
 from xml.sax.saxutils import unescape
 
 
-# Start off with default config and override with our config
-this_script_dir = os.path.dirname(os.path.realpath(__file__))
-default_config = toml.load(this_script_dir+'/top_cat_deault.toml')
+def get_config():
+    # Start off with default config and override with our config
+    this_script_dir = os.path.dirname(os.path.realpath(__file__))
+    default_config = toml.load(this_script_dir+'/top_cat_deault.toml')
 
-CONFIG_FILE_LOC = os.path.expanduser("~/.top_cat.toml")
-# Let's query the config file
-if os.path.isfile(CONFIG_FILE_LOC):
-    try:
-        top_cat_user_config = toml.load(CONFIG_FILE_LOC)
-    except Exception as e:
-        print( "Malformed config file at '%s'" % (CONFIG_FILE_LOC) , file=sys.stderr)
-        exit(1)
-else:
-    top_cat_user_config = dict()
+    CONFIG_FILE_LOC = os.path.expanduser("~/.top_cat.toml")
+    # Let's query the config file
+    if os.path.isfile(CONFIG_FILE_LOC):
+        try:
+            top_cat_user_config = toml.load(CONFIG_FILE_LOC)
+        except Exception as e:
+            print( "Malformed config file at '%s'" % (CONFIG_FILE_LOC) , file=sys.stderr)
+            exit(1)
+    else:
+        top_cat_user_config = dict()
 
-top_cat_config = {**default_config, **top_cat_user_config}
+    top_cat_config = {**default_config, **top_cat_user_config}
 
-# If we plan on posting to social media, let's make sure we have tokens to try
-assert ( not POST_TO_SLACK_TF
-            or (POST_TO_SLACK_TF and SLACK_API_TOKEN and SLACK_API_TOKEN != 'YOUR__SLACK__API_TOKEN_GOES_HERE')
-        ), "If you want to post to slack then you need to add an api key to the config file!"
-assert ( not POST_TO_FB_TF
-            or (POST_TO_FB_TF and FB_PAGE_ACCESS_TOKEN and FB_PAGE_ACCESS_TOKEN != 'YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE')
-        ), "If you want to post to FB then you need to add a fb page_access_token to the config"
+    # If we plan on posting to social media, let's make sure we have tokens to try
+    assert ( not POST_TO_SLACK_TF
+                or (POST_TO_SLACK_TF and SLACK_API_TOKEN and SLACK_API_TOKEN != 'YOUR__SLACK__API_TOKEN_GOES_HERE')
+            ), "If you want to post to slack then you need to add an api key to the config file!"
+    assert ( not POST_TO_FB_TF
+                or (POST_TO_FB_TF and FB_PAGE_ACCESS_TOKEN and FB_PAGE_ACCESS_TOKEN != 'YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE')
+            ), "If you want to post to FB then you need to add a fb page_access_token to the config"
+    return top_cat_config
 
 
 # Get google vision api credentials
@@ -65,7 +68,7 @@ service = discovery.build('vision', 'v1', credentials=credentials)
 conn = sqlite3.connect(os.path.expanduser("~/.top_cat.db"))
 cur = conn.cursor()
 # Create the top_cat table and index
-map(lambda s: cur.execute(s),
+[ cur.execute(sql) for sql in
     [   """
         CREATE TABLE IF NOT EXISTS
             image (
@@ -95,8 +98,8 @@ map(lambda s: cur.execute(s),
                     file_hash
                 );
         """
-    ])
-
+    ]
+]
 
 def get_thumb_content(img_content, image_max_size = (1000,1000)):
     pil_img = Image.open(StringIO.StringIO(img_content))
@@ -113,10 +116,10 @@ def fix_imgur_url(url):
     eg "http://i.imgur.com/mc316Un" -> "http://i.imgur.com/mc316Un.jpg"
     """
     if "imgur.com" in url:
-        # Don't bother if it already ends in .jpg
+        # Don't bother doing anything fancy if it already ends in .jpg
         if '.' not in url.split("/")[-1]:
             r = requests.get(url)
-            # I could have used bs4, but it'd actually be more verbose in this case.
+            # I could have used something fancier but this works fine
             img_link = re.findall('<link rel="image_src"\s*href="([^"]+)"/>', r.text)
             video_link = re.findall('<meta property="og:video"\s*content="([^"]+)"\s*/>', r.text)
             assert img_link or video_link, "imgur url fixing failed for " + url
@@ -133,7 +136,7 @@ def fix_giphy_url(url):
     return url
 
 def fix_redd_url(url):
-    return url+'/DASH_480' if 'v.redd.it' in url else url
+    return url+'/DASH_480.mp4' if 'v.redd.it' in url else url
 
 def fix_url_in_dict(d):
     if d['gfycat']:
@@ -173,8 +176,8 @@ just_jpgs = [l for l in fixed_links if is_jpg(l)]
 
 for img in just_jpgs:
     img_content = requests.get(img, stream=True).content
-    img_resized = get_thumb_content(img_content)
     # Make sure it's small enough for the vision api
+    img_resized = get_thumb_content(img_content)
     image_content_b64 = base64.b64encode(img_resized)
     #Check if we already have the file in the db
     retrieved_from_db = False

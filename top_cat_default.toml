@@ -1,4 +1,7 @@
-LABEL_TO_SEARCH_FOR = "cat"
+# If you went to the trouble of training your own then just put the absolute path to the tar, other options from tensorflow are also possible. Check deeplabv3 demo ipynb for more info
+DEEPLABV3_FILE_NAME = "deeplabv3_pascal_train_aug_2018_01_04.tar.gz"
+
+LABELS_TO_SEARCH_FOR = ["cat","dog"]
 MAX_REDDIT_API_ATTEMPTS = 20
 
 POST_TO_FB_TF = true
