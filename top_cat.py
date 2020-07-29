@@ -98,6 +98,15 @@ cur = conn.cursor()
                     file_hash
                 );
         """
+    ,
+        """
+        CREATE INDEX IF NOT EXISTS
+            image_url_index
+            on  image (
+                    url
+                );
+        """
+
     ]
 ]
 
@@ -158,23 +167,51 @@ def query_reddit_api(limit=10):
         sleep(0.1)
     assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe try again later?)"
     # We've got the data for sure now.
-    nice_jsons = pyjq.all('.data.children[].data|{title, url, gfycat: .media.oembed.thumbnail_url}', j)
+    nice_jsons = pyjq.all('.data.children[].data|{title, url, orig_url: .url, gfycat: .media.oembed.thumbnail_url}', j)
     # fix imgur and giphy urls:
     nice_jsons = [ {**d, 'url':fix_url_in_dict(d)} for d in nice_jsons ]
     return nice_jsons
 
+def add_image_content_to_post_d(post):
+    " Add the image data to our post dictionary. Don't bother if it's already there. "
+    if post.get('image') is None:
+        post['image'] = requests.get(post['url'], stream=True).content
+        post['image_hash'] = hashlib.sha1(post['image']).hexdigest()
+    return post
 
-links = [ i["data"]["url"] for i in j["data"]["children"]]
-fixed_links = [ unescape(fix_imgur_url(u)) for u in links ]
-links_map_to_title = dict(zip(fixed_links, [ unicode(i["data"]["title"]) for i in j["data"]["children"]]))
 
-def is_jpg(url):
-    return requests.get(url, stream=True).headers.get('content-type') == 'image/jpeg'
+# links = [ i["data"]["url"] for i in j["data"]["children"]]
+# fixed_links = [ unescape(fix_imgur_url(u)) for u in links ]
+# links_map_to_title = dict(zip(fixed_links, [ unicode(i["data"]["title"]) for i in j["data"]["children"]]))
 
-#just_jpgs = filter(is_jpg, fixed_links)
-just_jpgs = [l for l in fixed_links if is_jpg(l)]
+# def is_jpg(url):
+#     return requests.get(url, stream=True).headers.get('content-type') == 'image/jpeg'
 
-for img in just_jpgs:
+# #just_jpgs = filter(is_jpg, fixed_links)
+# just_jpgs = [l for l in fixed_links if is_jpg(l)]
+
+
+reddit_response_json = query_reddit_api()
+
+
+# Make sure we have the images and labels stashed for any potentially new posts
+# Usually we just skip over a post since it's probably been in the top N for a few hours already
+for post_i, post in enumerate(reddit_response_json):
+    cur.execute('SELECT image_id FROM image WHERE url=?', (post['url'],))
+    image_found = cur.fetchone()
+    if not image_found:
+        # Did not find the url, must be a new post. Double check image table for existing hash
+        add_image_content_to_post_d(post)
+        cur.execute('SELECT image_id FROM image WHERE hash=?', (post['image_hash'],))
+        image_reposted = cur.fetchone()
+        if not image_reposted:
+            # Ok, it's truly an original post, let's cache the labels
+            #### FIXME: Add logic for caching labels
+
+# We're ready to figure out if the post has climbed up the ranks and become a top post
+
+
+for post in reddit_response_json:
     img_content = requests.get(img, stream=True).content
     # Make sure it's small enough for the vision api
     img_resized = get_thumb_content(img_content)
