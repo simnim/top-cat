@@ -175,11 +175,11 @@ def query_reddit_api(config, limit=10):
         r = requests.get(f"https://www.reddit.com/r/aww/top.json?limit={limit}", headers={'User-Agent': 'linux:top-cat:v0.2.0'})
         j = r.json()
         if j.get("data") is not None:
-            if config['--verbose']:
+            if config['VERBOSE']:
                 print( "Succesfully queried the reddit api after", attempt+1, "attempts" , file=sys.stderr)
             break
         else:
-            if config['--verbose']:
+            if config['VERBOSE']:
                 print( "Attempt", attempt, "at reddit api call failed. Trying again..." , file=sys.stderr)
         sleep(0.1)
     assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe try again later?)"
@@ -210,8 +210,6 @@ def add_labels_for_image_to_post_d(post, model):
       resized_im, seg_map = model.run(frame)
       unique_labels = np.unique(seg_map)
       unique, counts = np.unique(seg_map, return_counts=True)
-      if config['--verbose']:
-        print(list(zip(unique, counts)))
       label_counts_for_post += Counter(
                     dict(zip(unique, 1.0*counts/seg_map.size/len(frames_in_video)))
                 )
@@ -292,12 +290,12 @@ def populate_labels_in_db_for_posts(
             post_id = db_cur.fetchone()[0]
 
             # Print out each label and label's score. Also store each result in the db.)
-            if config['--verbose']:
+            if config['VERBOSE']:
                 print("Labels for", post['title'], ':', file=sys.stderr)
             for label, score in zip(post['labels'],post['scores']):
                 # Sometimes a few pixels get ridiculous labels... 10% of the pixels having a label seems like a decent cutoff...
                 ignore_this_label = (label == 'background' or score < SCORE_CUTOFF)
-                if config['--verbose']:
+                if config['VERBOSE']:
                     print('    ',label,'=',score, file=sys.stderr)
                 db_cur.execute("INSERT INTO post_label (post_id, label, score) values (?,?,?)",
                             (post_id, label, score))
@@ -348,6 +346,14 @@ def main():
 
     top_cat_config = get_config(config_file_loc=args['--config'])
     update_config_with_args(top_cat_config, args)
+
+    # TF logging level based on configured logging level
+    if top_cat_config['VERBOSE']:
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
+        tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+    else:
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+        tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
     # Connect to the db. Create the sqlite file if necessary.
     db_conn = sqlite3.connect(os.path.expanduser(top_cat_config['DB_FILE']))
