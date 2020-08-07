@@ -332,13 +332,10 @@ def repost_to_social_media(post, label, top_cat_config):
         status = fb_api.put_wall_post(message=unicode(links_map_to_title[img]), attachment=attachment)
 
 
-def update_config_with_args_when_in_both(config, args):
-    " In case there's an option shared by both (like DB_FILE) add it to the config "
+def update_config_with_args(config, args):
     # { 'DB_FILE': '--db-file' ... }
-    config_format_to_args_f = dict(zip([ a.strip('-').replace('-','_').upper() for a in args.keys()],  args.keys()))
-    # figure out if any options are shared
-    options_in_both = set(config.keys()).intersection(config_format_to_args_f.keys())
-    config.update([ (opt, args[config_format_to_args_f[opt]]) for opt in options_in_both if args[config_format_to_args_f[opt]] is not None ])
+    args_keys_to_conig_keys = dict(zip(args.keys(),  [ a.strip('-').replace('-','_').upper() for a in args.keys()]))
+    config.update([ (args_keys_to_conig_keys[argk], args[argk]) for argk in args.keys() if args[argk] is not None ])
 
 
 def main():
@@ -350,7 +347,7 @@ def main():
     args = docopt(__doc__, version='0.2.0')
 
     top_cat_config = get_config(config_file_loc=args['--config'])
-    update_config_with_args_when_in_both(top_cat_config, args)
+    update_config_with_args(top_cat_config, args)
 
     # Connect to the db. Create the sqlite file if necessary.
     db_conn = sqlite3.connect(os.path.expanduser(top_cat_config['DB_FILE']))
