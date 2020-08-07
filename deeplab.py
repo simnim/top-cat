@@ -88,20 +88,3 @@ class DeepLabModel(object):
     seg_map = batch_seg_map[0]
     return resized_image, seg_map
 
-
-
-deeplabv3_model_tar = tf.keras.utils.get_file(
-	fname=config['DEEPLABV3_FILE_NAME'],
-	origin="http://download.tensorflow.org/models/"+config['DEEPLABV3_FILE_NAME'],
-	cache_subdir='models')
-
-MODEL = DeepLabModel(deeplabv3_model_tar)
-
-
-def look_for_desired_labels(img_or_video, labels_to_keep):
-  original_im = Image.open(img_file)
-  print('running deeplab on image %s...' % img_file)
-  resized_im, seg_map = MODEL.run(original_im)
-  unique_labels = np.unique(seg_map)
-
-

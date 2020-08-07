@@ -15,16 +15,15 @@ Usage:
 Options:
     -h, --help            Show this help message and exit
     -v, --verbose         Debug info
-    -c, --config          config file location [default: ~/.top_cat/config.toml]
-    -d, --db-file         sqlite3 db file location [default: ~/.top_cat/db]
+    -c, --config FILE     config file location [default: ~/.top_cat/config.toml]
+    -d, --db-file FILE    sqlite3 db file location. Default in toml file.
 
 """
+
 
 import requests
 import re
 import base64
-# from googleapiclient import discovery
-# from oauth2client.client import GoogleCredentials
 # import facebook
 import sys
 import json
@@ -35,20 +34,40 @@ import os
 from time import sleep
 from PIL import Image
 from io import BytesIO, StringIO
-from tempfile import NamedTemporaryFile
-
-# Because the reddit api links use escaped html strings ie &amp;
-from xml.sax.saxutils import unescape
-
-
+from tempfile import NamedTemporaryFile, TemporaryDirectory
+import pyjq
+# # Because the reddit api links use escaped html strings ie &amp;
+# from xml.sax.saxutils import unescape
 from docopt import docopt
+import tensorflow as tf
+from deeplab import DeepLabModel
+from collections import Counter
 
-THIS_SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_CONFIG = toml.load(this_script_dir+'/top_cat_default.toml')
+import cv2
+import numpy as np
+import cv2
+from matplotlib import pyplot as plt
+from PIL import Image
+import string
+import random
+
+MAX_IMS_PER_VIDEO = 20
+
+# 10% is a solid cutoff...
+SCORE_CUTOFF = .1
+
+import mimetypes
+
+# So we can copy paste into ipython for debugging. Assuming we run ipython from the repo dir
+if hasattr(__builtins__,'__IPYTHON__'):
+    THIS_SCRIPT_DIR = os.getcwd()
+else:
+    THIS_SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_CONFIG = toml.load(THIS_SCRIPT_DIR+'/top_cat_default.toml')
 
 
-def get_config():
-    user_config_file_loc = os.path.expanduser("~/.top_cat/config.toml")
+def get_config(config_file_loc="~/.top_cat/config.toml"):
+    user_config_file_loc = os.path.expanduser(config_file_loc)
     # Let's query the config file
     if os.path.isfile(user_config_file_loc):
         try:
@@ -77,45 +96,37 @@ def guarantee_tables_exist(db_conn):
     # Create the top_cat table and index
     for sql in """
             CREATE TABLE IF NOT EXISTS
-                image (
-                    image_id      INTEGER PRIMARY KEY,
+                post (
+                    post_id       INTEGER PRIMARY KEY,
                     timestamp_ins text not null default current_timestamp,
                     url           text not null,
                     file_hash     text not null,
-                    title         text not null,
-                    top_label     text not null
+                    title         text not null
                 );
 
             CREATE TABLE IF NOT EXISTS
-                image_labels (
-                    image_id      int not null,
+                post_label (
+                    label_id      INTEGER PRIMARY KEY,
+                    post_id       int not null,
                     label         text not null,
                     score         REAL,
-                    FOREIGN KEY(image_id) REFERENCES image(image_id)
+                    FOREIGN KEY(post_id) REFERENCES post(post_id)
                 );
 
             CREATE INDEX IF NOT EXISTS
-                image_file_hash_index
-                on  image (
+                media_file_hash_index
+                on  post (
                         file_hash
                     );
 
             CREATE INDEX IF NOT EXISTS
-                image_url_index
-                on  image (
+                media_url_index
+                on  post (
                         url
                     );
             """.split(';'):
         db_cur.execute(sql.strip())
     db_conn.commit()
-
-
-def get_thumb_content(img_content, image_max_size = (1000,1000)):
-    pil_img = Image.open(StringIO.StringIO(img_content))
-    pil_img.thumbnail(image_max_size, Image.ANTIALIAS)
-    b = BytesIO()
-    pil_img.save(b, format='jpeg')
-    return b.getvalue()
 
 
 def fix_imgur_url(url):
@@ -145,8 +156,11 @@ def fix_giphy_url(url):
         return re.sub('.*gfycat.com/([^-]+)-.*', r'https://thumbs.gfycat.com/\1-mobile.mp4', url)
     return url
 
+
 def fix_redd_url(url):
-    return url+'/DASH_480.mp4' if 'v.redd.it' in url else url
+    # Originally had it as 480.mp4 but that didn't always work... hopefully don't have to be more clever
+    return url+'/DASH_360.mp4' if 'v.redd.it' in url else url
+
 
 def fix_url_in_dict(d):
     if d['gfycat']:
@@ -161,10 +175,12 @@ def query_reddit_api(config, limit=10):
         r = requests.get(f"https://www.reddit.com/r/aww/top.json?limit={limit}", headers={'User-Agent': 'linux:top-cat:v0.2.0'})
         j = r.json()
         if j.get("data") is not None:
-            print( "Succesfully queried the reddit api after", attempt+1, "attempts" , file=sys.stderr)
+            if config['--verbose']:
+                print( "Succesfully queried the reddit api after", attempt+1, "attempts" , file=sys.stderr)
             break
         else:
-            print( "Attempt", attempt, "at reddit api call failed. Trying again..." , file=sys.stderr)
+            if config['--verbose']:
+                print( "Attempt", attempt, "at reddit api call failed. Trying again..." , file=sys.stderr)
         sleep(0.1)
     assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe try again later?)"
     # We've got the data for sure now.
@@ -173,31 +189,122 @@ def query_reddit_api(config, limit=10):
     nice_jsons = [ {**d, 'url':fix_url_in_dict(d)} for d in nice_jsons ]
     return nice_jsons
 
-def add_image_content_to_post_d(post):
+
+def add_image_content_to_post_d(post, model, temp_dir):
     " Add the image data to our post dictionary. Don't bother if it's already there. "
-    if post.get('image') is None:
-        post['image'] = requests.get(post['url'], stream=True).content
-        post['image_hash'] = hashlib.sha1(post['image']).hexdigest()
-    return post
+    if post.get('media_file') is None:
+        #FIXME: Make this write to a tempfile instead
+        temp_fname = f"{temp_dir.name}/{''.join(random.choice(string.ascii_lowercase) for i in range(20))}.{post['url'].split('.')[-1]}"
+        post['media_file'] = temp_fname
+        open(temp_fname,'wb').write(requests.get(post['url'], stream=True).content)
+        post['media_hash'] = hashlib.sha1(open(temp_fname,'rb').read()).hexdigest()
+        add_labels_for_image_to_post_d(post,model)
+
+def add_labels_for_image_to_post_d(post, model):
+    # FIXME
+    label_counts_for_post = Counter()
+    frames_in_video = cast_to_pil_imgs(
+                        extract_frames_from_im_or_video(post['media_file'])
+                    )
+    for frame in frames_in_video:
+      resized_im, seg_map = model.run(frame)
+      unique_labels = np.unique(seg_map)
+      unique, counts = np.unique(seg_map, return_counts=True)
+      if config['--verbose']:
+        print(list(zip(unique, counts)))
+      label_counts_for_post += Counter(
+                    dict(zip(unique, 1.0*counts/seg_map.size/len(frames_in_video)))
+                )
+    post['labels'] = [ model.LABEL_NAMES[k] for k in label_counts_for_post.keys()]
+    post['scores'] = list(label_counts_for_post.values())
 
 
-def populate_labels_in_db_for_posts(reddit_response_json):
+
+def extract_frames_from_im_or_video(media_file):
+    mime_t = mimetypes.MimeTypes().guess_type(media_file)[0]
+    if mime_t.split('/')[0] == 'video' or mime_t == 'image/gif':
+        # Modified from https://answers.opencv.org/question/62029/extract-a-frame-every-second-in-python/
+        to_ret = []
+        cap = cv2.VideoCapture(media_file)
+        frame_rate = cap.get(cv2.CAP_PROP_FPS)
+        frames_in_video = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        seconds_in_video = frames_in_video/frame_rate
+        if seconds_in_video > MAX_IMS_PER_VIDEO:
+            frames_to_grab = np.linspace(0, frames_in_video-1, num=MAX_IMS_PER_VIDEO, dtype=int)
+        else:
+            frames_to_grab = [int(f) for f in np.arange(0,frames_in_video,frame_rate)]
+        while(cap.isOpened()):
+            frame_id = cap.get(cv2.CAP_PROP_POS_FRAMES)
+            got_a_frame, frame = cap.read()
+            if not got_a_frame:
+                break
+            if int(frame_id) in frames_to_grab:
+                to_ret.append(frame)
+    #             filename = "/Users/nim/git/top_cat/debug/image_" +  str(int(frame_id)) + ".jpg"
+    #             cv2.imwrite(filename, frame)
+        cap.release()
+        return to_ret
+    else:
+        return [Image.open(media_file)]
+
+
+
+def cast_to_pil_imgs(img_or_vid):
+    if issubclass(type(img_or_vid),Image.Image):
+        return [img_or_vid]
+    elif type(img_or_vid) == np.ndarray:
+        return [Image.fromarray(cv2.cvtColor(img_or_vid, cv2.COLOR_BGR2RGB))]
+    elif type(img_or_vid) == list and issubclass(type(img_or_vid[0]),Image.Image):
+        return img_or_vid
+    elif type(img_or_vid) == list and type(img_or_vid[0]) == np.ndarray:
+        return [ Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)) for frame in img_or_vid ]
+    else:
+        print("wtf is the image?", img_or_vid, type(img_or_vid), type(img_or_vid[0]))
+        return img_or_vid
+
+
+
+def populate_labels_in_db_for_posts(
+              reddit_response_json
+            , model
+            , temp_dir
+            , db_conn
+            , config
+        ):
+    db_cur = db_conn.cursor()
     # Make sure we have the images and labels stashed for any potentially new posts
     # Usually we just skip over a post since it's probably been in the top N for a few hours already
     for post_i, post in enumerate(reddit_response_json):
-        db_cur.execute('SELECT image_id FROM image WHERE url=?', (post['url'],))
+        db_cur.execute('SELECT post_id FROM post WHERE url=?', (post['url'],))
         image_found = db_cur.fetchone()
         if not image_found:
-            # Did not find the url, must be a new post. Double check image table for existing hash
-            add_image_content_to_post_d(post)
-            db_cur.execute('SELECT image_id FROM image WHERE hash=?', (post['image_hash'],))
-            image_reposted = db_cur.fetchone()
-            if not image_reposted:
-                # Ok, it's truly an original post, let's cache the labels
-                #### FIXME: Add logic for caching labels
+            # Did not find the url, must be a new post. (or maybe a repost...)
+            add_image_content_to_post_d(post,model,temp_dir)
+
+            #Check if we already have the file in the db
+            db_cur.execute("INSERT INTO post (url, file_hash, title) values (?,?,?)",
+                              ( post['url'],
+                                post['media_hash'],
+                                post['title'] )
+                        )
+            db_conn.commit()
+            db_cur.execute('SELECT post_id FROM post WHERE url=?', (post['url'],))
+            post_id = db_cur.fetchone()[0]
+
+            # Print out each label and label's score. Also store each result in the db.)
+            if config['--verbose']:
+                print("Labels for", post['title'], ':', file=sys.stderr)
+            for label, score in zip(post['labels'],post['scores']):
+                # Sometimes a few pixels get ridiculous labels... 10% of the pixels having a label seems like a decent cutoff...
+                ignore_this_label = (label == 'background' or score < SCORE_CUTOFF)
+                if config['--verbose']:
+                    print('    ',label,'=',score, file=sys.stderr)
+                db_cur.execute("INSERT INTO post_label (post_id, label, score) values (?,?,?)",
+                            (post_id, label, score))
+                db_conn.commit()
 
 
-def repost_to_social_media(post, label):
+def repost_to_social_media(post, label, top_cat_config):
     if top_cat_config['POST_TO_SLACK_TF']:
         slack_payload = {
             "token": top_cat_config['SLACK_API_TOKEN'],
@@ -225,96 +332,62 @@ def repost_to_social_media(post, label):
         status = fb_api.put_wall_post(message=unicode(links_map_to_title[img]), attachment=attachment)
 
 
+def update_config_with_args_when_in_both(config, args):
+    " In case there's an option shared by both (like DB_FILE) add it to the config "
+    # { 'DB_FILE': '--db-file' ... }
+    config_format_to_args_f = dict(zip([ a.strip('-').replace('-','_').upper() for a in args.keys()],  args.keys()))
+    # figure out if any options are shared
+    options_in_both = set(config.keys()).intersection(config_format_to_args_f.keys())
+    config.update([ (opt, args[config_format_to_args_f[opt]]) for opt in options_in_both if args[config_format_to_args_f[opt]] is not None ])
+
 
 def main():
     # FIXME: Fill in completely
 
+    temp_dir = TemporaryDirectory()
+
+    # Parse args and prepare configuration
     args = docopt(__doc__, version='0.2.0')
 
-    # DONTFIXME: Don't use vision api
-    # # Get google vision api credentials
-    # credentials = GoogleCredentials.get_application_default()
-    # service = discovery.build('vision', 'v1', credentials=credentials)
+    top_cat_config = get_config(config_file_loc=args['--config'])
+    update_config_with_args_when_in_both(top_cat_config, args)
 
-    top_cat_config = get_config()
-
-    # Connect to the db. It creates the file if necessary.
+    # Connect to the db. Create the sqlite file if necessary.
     db_conn = sqlite3.connect(os.path.expanduser(top_cat_config['DB_FILE']))
+    guarantee_tables_exist(db_conn)
     db_cur = db_conn.cursor()
 
+    # Get the vision model ready
+    deeplabv3_model_tar = tf.keras.utils.get_file(
+        fname=top_cat_config['DEEPLABV3_FILE_NAME'],
+        origin="http://download.tensorflow.org/models/"+top_cat_config['DEEPLABV3_FILE_NAME'],
+        cache_subdir='models')
+    model = DeepLabModel(deeplabv3_model_tar)
 
-    ### FIXME: Clean up and refactor into more functions
-
-    # links = [ i["data"]["url"] for i in j["data"]["children"]]
-    # fixed_links = [ unescape(fix_imgur_url(u)) for u in links ]
-    # links_map_to_title = dict(zip(fixed_links, [ unicode(i["data"]["title"]) for i in j["data"]["children"]]))
-
-    # def is_jpg(url):
-    #     return requests.get(url, stream=True).headers.get('content-type') == 'image/jpeg'
-
-    # #just_jpgs = filter(is_jpg, fixed_links)
-    # just_jpgs = [l for l in fixed_links if is_jpg(l)]
-
+    # What's new in /r/aww?
     reddit_response_json = query_reddit_api(top_cat_config)
 
-    populate_labels_in_db_for_posts(reddit_response_json)
+    # Label everything
+    populate_labels_in_db_for_posts(
+              reddit_response_json=reddit_response_json
+            , model=model
+            , temp_dir=temp_dir
+            , db_conn=db_conn
+            , config=top_cat_config
+        )
 
-    # We're ready to figure out if the post has climbed up the ranks and become a top post
-    for label_to_search_for in top_cat_config['LABELS_TO_SEARCH_FOR']:
-        # Iterate down the list of reddit posts and see if there's a label_to_search_for for the post.
-        # FIXME: this part
-        db_cur.execute("INSERT INTO image (url, file_hash, title, top_label) values (?,?,?,?)",
-                    (img, file_hash, unicode(links_map_to_title[img]), top_label))
-        db_conn.commit()
-        db_cur.execute('SELECT image_id FROM image WHERE file_hash=?', (file_hash,))
-        image_id = db_cur.fetchone()[0]
-        # Print out each label and label's score. Also store each result in the db.)
-        print( "Labels for " + img + ':' , file=sys.stderr)
-        for label, score in labels_and_scores:
-            print( '    ' + label + ' = ' + str(score) , file=sys.stderr)
-            db_cur.execute("INSERT INTO image_labels (image_id, label, score) values (?,?,?)",
-                        (image_id, label, score))
-            db_conn.commit()
+    # ### FIXME: Clean up and refactor into more functions
 
-    ### FIXME: Old code
-    for post in reddit_response_json:
-        img_content = requests.get(img, stream=True).content
-        # Make sure it's small enough for the vision api
-        img_resized = get_thumb_content(img_content)
-        image_content_b64 = base64.b64encode(img_resized)
-        #Check if we already have the file in the db
-        retrieved_from_db = False
-        file_hash = hashlib.sha1(image_content_b64).hexdigest()
-        db_cur.execute('SELECT top_label FROM image WHERE file_hash=?', (file_hash,))
-        top_label = db_cur.fetchone()
-        if top_label:
-            #We've already got it.
-            top_label = top_label[0]
-            retrieved_from_db = True
-            print("IMAGE ALREADY IN DB:", top_label, img, unicode(links_map_to_title[img]))
+    # # We're ready to figure out if the post has climbed up the ranks and become a top post
+    # for label_to_search_for in top_cat_config['LABELS_TO_SEARCH_FOR']:
+    #     # Iterate down the list of reddit posts and see if there's a label_to_search_for for the post.
+    #     # FIXME: this part
+    #     if appropriate:
+    #         repost_to_social_media(post,label,top_cat_config)
 
 
-        if top_label == LABEL_TO_SEARCH_FOR:
-            print("TOP %s FOUND!" % (LABEL_TO_SEARCH_FOR.upper()))
-            print("Titled:", unicode(links_map_to_title[img]))
-            print(img)
-            if not retrieved_from_db :
-                repost_to_social_media()
-            # We found the top cat, no need to keep going through images
-            break
-
-    if top_label != LABEL_TO_SEARCH_FOR:
-        # WHAT?!?!?!?! No cats???
-        print("WARNING: The internet is broken. No top_cat found...")
-
-    ### /FIXME: Old code
-
-    ### /FIXME: Clean up and refactor into more functions
-
-
+    # ### /FIXME: Clean up and refactor into more functions
 
 
 if __name__ == "__main__":
-    # execute only if run as a script
     main()
-
