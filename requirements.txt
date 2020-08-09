@@ -1,0 +1,9 @@
+requests
+toml
+Pillow
+docopt
+matplotlib
+numpy
+tensorflow
+pyjq
+opencv-python
