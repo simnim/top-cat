@@ -12,4 +12,6 @@ FB_PAGE_ACCESS_TOKEN = "YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE"
 # https://api.slack.com/custom-integrations/legacy-tokens
 POST_TO_SLACK_TF = false
 SLACK_API_TOKEN = "YOUR__SLACK__API_TOKEN_GOES_HERE"
-SLACK_CHANNEL = "#top_cat"
+# Give one channel for each label.
+# If you want them all in the same channel then you might get reposts.
+SLACK_CHANNELS = ["#top_cat", "#top_dog"]
