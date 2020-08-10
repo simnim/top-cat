@@ -429,8 +429,6 @@ def main():
     # What's new in /r/aww?
     reddit_response_json = query_reddit_api(top_cat_config)
 
-    # if top_cat_config['VERBOSE']: pprint.pp(reddit_response_json)
-
     # Label everything... not really necessary since we could just label
     #   the top_post but nice to have in the db regardless
     populate_labels_in_db_for_posts(
