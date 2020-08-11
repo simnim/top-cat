@@ -38,11 +38,7 @@ import pyjq
 # # Because the reddit api links use escaped html strings ie &amp;
 # from xml.sax.saxutils import unescape
 from docopt import docopt
-import tensorflow as tf
-# Turn off useless TF messages
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'; tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-from deeplab import DeepLabModel
 from collections import Counter
 
 import cv2
@@ -227,18 +223,11 @@ def add_image_content_to_post_d(post, temp_dir):
         post['media_hash'] = hashlib.sha1(open(temp_fname,'rb').read()).hexdigest()
 
 
-def add_labels_for_image_to_post_d(post, model):
-    proportion_label_in_post = Counter()
+def add_labels_for_image_to_post_d(post, labelling_function):
     frames_in_video = cast_to_pil_imgs(
                         extract_frames_from_im_or_video(post['media_file'])
                     )
-    for frame in frames_in_video:
-        resized_im, seg_map = model.run(frame)
-        unique_labels = np.unique(seg_map)
-        labels, num_pixels = np.unique(seg_map, return_counts=True)
-        proportion_label_in_post += Counter(
-                      dict(zip(labels, 1.0*num_pixels/seg_map.size/len(frames_in_video)))
-                  )
+    proportion_label_in_post = labelling_function(frames_in_video)
 
     # Delete labels below threshold
     for label in list(proportion_label_in_post.keys()):
@@ -296,7 +285,7 @@ def cast_to_pil_imgs(img_or_vid):
 
 def populate_labels_in_db_for_posts(
               reddit_response_json
-            , model
+            , labelling_function
             , temp_dir
             , db_conn
             , config
@@ -310,7 +299,7 @@ def populate_labels_in_db_for_posts(
         if not image_found:
             # Did not find the url, must be a new post. (or maybe a repost...)
             add_image_content_to_post_d(post,temp_dir)
-            add_labels_for_image_to_post_d(post,model)
+            add_labels_for_image_to_post_d(post,labelling_function)
 
             #Check if we already have the file in the db
             db_cur.execute("INSERT INTO post (url, media_hash, title) values (?,?,?)",
@@ -408,6 +397,26 @@ def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
                 print(f'Got a new top {label_to_search_for}: {post["title"]} {post["url"]}')
 
 
+def get_labelling_funtion_given_config(config):
+    if config['USE_GOOGLE_VISION']:
+        from google.cloud import vision
+        gvision_client = vision.ImageAnnotatorClient()
+        from google_vision_labeler import get_labels_from_frames_gvision
+        return lambda frames: get_labels_from_frames_gvision(gvision_client, frames)
+    else:
+        # Only load tf and the deeplab model now that we're here
+        import tensorflow as tf
+        # Turn off useless TF messages
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'; tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+        from deeplab import DeepLabModel, get_labels_from_frames_deeplab
+        # Get the vision model ready
+        deeplabv3_model_tar = tf.keras.utils.get_file(
+            fname=top_cat_config['DEEPLABV3_FILE_NAME'],
+            origin="http://download.tensorflow.org/models/"+top_cat_config['DEEPLABV3_FILE_NAME'],
+            cache_subdir='models')
+        model = DeepLabModel(deeplabv3_model_tar)
+        return lambda frames: get_labels_from_frames_deeplab(model, frames)
+
 def main():
     # FIXME: Fill in completely
 
@@ -424,12 +433,8 @@ def main():
     guarantee_tables_exist(db_conn)
     db_cur = db_conn.cursor()
 
-    # Get the vision model ready
-    deeplabv3_model_tar = tf.keras.utils.get_file(
-        fname=top_cat_config['DEEPLABV3_FILE_NAME'],
-        origin="http://download.tensorflow.org/models/"+top_cat_config['DEEPLABV3_FILE_NAME'],
-        cache_subdir='models')
-    model = DeepLabModel(deeplabv3_model_tar)
+    # Get the function to do labelling ready
+    labelling_function = get_labelling_funtion_given_config(top_cat_config)
 
     # What's new in /r/aww?
     reddit_response_json = query_reddit_api(top_cat_config)
@@ -438,7 +443,7 @@ def main():
     #   the top_post but nice to have in the db regardless
     populate_labels_in_db_for_posts(
               reddit_response_json=reddit_response_json
-            , model=model
+            , labelling_function=labelling_function
             , temp_dir=temp_dir
             , db_conn=db_conn
             , config=top_cat_config

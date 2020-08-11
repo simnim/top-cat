@@ -90,22 +90,16 @@ class DeepLabModel(object):
         return resized_image, seg_map
 
 
-# # Get the vision model ready
-# deeplabv3_model_tar = tf.keras.utils.get_file(
-#     fname=top_cat_config['DEEPLABV3_FILE_NAME'],
-#     origin="http://download.tensorflow.org/models/"+top_cat_config['DEEPLABV3_FILE_NAME'],
-#     cache_subdir='models')
-# model = DeepLabModel(deeplabv3_model_tar)
 
-# def get_labels_from_frames_deeplab(frames_in_video):
-#     # Counter can also keep track of fractional values
-#     proportion_label_in_post = Counter()
-#     for frame in frames_in_video:
-#         resized_im, seg_map = model.run(frame)
-#         unique_labels = np.unique(seg_map)
-#         labels, num_pixels = np.unique(seg_map, return_counts=True)
-#         labels_text = [ model.LABEL_NAMES[l] for l in labels ]
-#         proportion_label_in_post += Counter(
-#                         dict(zip(labels_text, 1.0*counts/seg_map.size/len(frames_in_video)))
-#                     )
-#     return proportion_label_in_post
+def get_labels_from_frames_deeplab(model, frames_in_video):
+    # Counter can also keep track of fractional values
+    proportion_label_in_post = Counter()
+    for frame in frames_in_video:
+        resized_im, seg_map = model.run(frame)
+        unique_labels = np.unique(seg_map)
+        labels, num_pixels = np.unique(seg_map, return_counts=True)
+        labels_text = [ model.LABEL_NAMES[l] for l in labels ]
+        proportion_label_in_post += Counter(
+                        dict(zip(labels_text, 1.0*counts/seg_map.size/len(frames_in_video)))
+                    )
+    return proportion_label_in_post
