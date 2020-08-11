@@ -404,15 +404,15 @@ def get_labelling_funtion_given_config(config):
         from google_vision_labeler import get_labels_from_frames_gvision
         return lambda frames: get_labels_from_frames_gvision(gvision_client, frames)
     else:
-        # Only load tf and the deeplab model now that we're here
+        # Only load tf and the deeplab model now that we've decided we want them
         import tensorflow as tf
         # Turn off useless TF messages
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'; tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
         from deeplab import DeepLabModel, get_labels_from_frames_deeplab
         # Get the vision model ready
         deeplabv3_model_tar = tf.keras.utils.get_file(
-            fname=top_cat_config['DEEPLABV3_FILE_NAME'],
-            origin="http://download.tensorflow.org/models/"+top_cat_config['DEEPLABV3_FILE_NAME'],
+            fname=config['DEEPLABV3_FILE_NAME'],
+            origin="http://download.tensorflow.org/models/"+config['DEEPLABV3_FILE_NAME'],
             cache_subdir='models')
         model = DeepLabModel(deeplabv3_model_tar)
         return lambda frames: get_labels_from_frames_deeplab(model, frames)

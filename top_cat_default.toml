@@ -15,3 +15,7 @@ SLACK_API_TOKEN = "YOUR__SLACK__API_TOKEN_GOES_HERE"
 # Give one channel for each label.
 # If you want them all in the same channel then you might get reposts.
 SLACK_CHANNELS = ["#top_cat", "#top_dog"]
+
+
+# Set this to true if you want to skip using deeplabv3 and instead prefer using google vision.
+USE_GOOGLE_VISION = false
