@@ -23,7 +23,6 @@ Options:
 import time
 import requests
 import re
-import base64
 # import facebook
 import sys
 import json
@@ -55,9 +54,10 @@ import string
 import random
 import pprint
 
-MAX_IMS_PER_VIDEO = 20
+# NOTE: Maybe add this to the config?
+MAX_IMS_PER_VIDEO = 10
 
-# 10% is a solid cutoff...
+# A little trial and error got me this cutoff. Maybe change it for a different model type?
 SCORE_CUTOFF = .05
 
 import mimetypes
@@ -228,21 +228,26 @@ def add_image_content_to_post_d(post, temp_dir):
 
 
 def add_labels_for_image_to_post_d(post, model):
-    # FIXME
-    label_counts_for_post = Counter()
+    proportion_label_in_post = Counter()
     frames_in_video = cast_to_pil_imgs(
                         extract_frames_from_im_or_video(post['media_file'])
                     )
     for frame in frames_in_video:
-      resized_im, seg_map = model.run(frame)
-      unique_labels = np.unique(seg_map)
-      unique, counts = np.unique(seg_map, return_counts=True)
-      label_counts_for_post += Counter(
-                    dict(zip(unique, 1.0*counts/seg_map.size/len(frames_in_video)))
-                )
-    post['labels'] = [ model.LABEL_NAMES[k] for k in label_counts_for_post.keys()]
-    post['scores'] = list(label_counts_for_post.values())
+        resized_im, seg_map = model.run(frame)
+        unique_labels = np.unique(seg_map)
+        labels, num_pixels = np.unique(seg_map, return_counts=True)
+        proportion_label_in_post += Counter(
+                      dict(zip(labels, 1.0*num_pixels/seg_map.size/len(frames_in_video)))
+                  )
 
+    # Delete labels below threshold
+    for label in list(proportion_label_in_post.keys()):
+        if proportion_label_in_post[label] < SCORE_CUTOFF:
+            del proportion_label_in_post[label]
+
+    # Add labels and scores to posts
+    post['labels'] = [ model.LABEL_NAMES[k] for k in proportion_label_in_post.keys()]
+    post['scores'] = list(proportion_label_in_post.values())
 
 
 def extract_frames_from_im_or_video(media_file):
@@ -324,10 +329,9 @@ def populate_labels_in_db_for_posts(
                 print(post['title'], ':', post['url'], file=sys.stderr)
             for label, score in zip(post['labels'],post['scores']):
                 # Sometimes a few pixels get ridiculous labels... 10% of the pixels having a label seems like a decent cutoff...
-                ignore_this_label = (label == 'background' or score < SCORE_CUTOFF)
                 if config['VERBOSE']:
-                    print('    ',label,'=',score, 'ignored' if ignore_this_label else '', file=sys.stderr)
-                if not ignore_this_label:
+                    print('    ',label,'=',score, file=sys.stderr)
+                if label != 'background':
                     db_cur.execute("INSERT INTO post_label (post_id, label, score) values (?,?,?)",
                                 (post_id, label, score))
                     db_conn.commit()
@@ -365,7 +369,7 @@ def repost_to_slack(post, label, top_cat_config):
         }
         requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
         if top_cat_config['VERBOSE']:
-            print('Posted',slack_payload)
+            print('Posted to slack')
 
 # # CURRENTLY BROKEN. Facebook got rid of my access and won't give me a new one...
 # def repost_to_facebook(post, label, top_cat_config):
@@ -401,6 +405,7 @@ def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
                 # repost_to_facebook(top_post,label_to_search_for,top_cat_config)
                 db_cur.execute("INSERT INTO top_post (post_id) values (?)", (top_post['post_id'],))
                 db_conn.commit()
+                print(f'Got a new top {label_to_search_for}: {post["title"]} {post["url"]}')
 
 
 def main():
