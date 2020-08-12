@@ -8,6 +8,7 @@ from matplotlib import gridspec
 from matplotlib import pyplot as plt
 import numpy as np
 from PIL import Image
+from collections import Counter
 
 #%tensorflow_version 1.x
 import tensorflow as tf
@@ -100,6 +101,6 @@ def get_labels_from_frames_deeplab(model, frames_in_video):
         labels, num_pixels = np.unique(seg_map, return_counts=True)
         labels_text = [ model.LABEL_NAMES[l] for l in labels ]
         proportion_label_in_post += Counter(
-                        dict(zip(labels_text, 1.0*counts/seg_map.size/len(frames_in_video)))
+                        dict(zip(labels_text, 1.0*num_pixels/seg_map.size/len(frames_in_video)))
                     )
     return proportion_label_in_post

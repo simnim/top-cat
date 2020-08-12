@@ -49,6 +49,7 @@ from PIL import Image
 import string
 import random
 import pprint
+import difflib
 
 # NOTE: Maybe add this to the config?
 MAX_IMS_PER_VIDEO = 10
@@ -77,6 +78,11 @@ def get_config(config_file_loc="~/.top_cat/config.toml"):
             exit(1)
     else:
         top_cat_user_config = dict()
+
+    # Make sure to crash if any extra config options are specified
+    available_opts = list(DEFAULT_CONFIG)
+    for user_config_opt in top_cat_user_config.keys():
+        assert user_config_opt in DEFAULT_CONFIG, f"# ERROR: You specified an unsopported option: {user_config_opt} \n# Maybe you meant {available_opts[np.argmax([difflib.SequenceMatcher(None, user_config_opt, opt).ratio() for opt in available_opts])]}\n# Possible choices: {available_opts}"
 
     top_cat_config = {**DEFAULT_CONFIG, **top_cat_user_config}
 
@@ -235,7 +241,7 @@ def add_labels_for_image_to_post_d(post, labelling_function):
             del proportion_label_in_post[label]
 
     # Add labels and scores to posts
-    post['labels'] = [ model.LABEL_NAMES[k] for k in proportion_label_in_post.keys()]
+    post['labels'] = list(proportion_label_in_post.keys())
     post['scores'] = list(proportion_label_in_post.values())
 
 
@@ -394,7 +400,7 @@ def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
                 # repost_to_facebook(top_post,label_to_search_for,top_cat_config)
                 db_cur.execute("INSERT INTO top_post (post_id) values (?)", (top_post['post_id'],))
                 db_conn.commit()
-                print(f'Got a new top {label_to_search_for}: {post["title"]} {post["url"]}')
+                print(f'Got a new top {label_to_search_for}: {top_post["title"]} {top_post["url"]}')
 
 
 def get_labelling_funtion_given_config(config):
@@ -418,13 +424,10 @@ def get_labelling_funtion_given_config(config):
         return lambda frames: get_labels_from_frames_deeplab(model, frames)
 
 def main():
-    # FIXME: Fill in completely
-
     temp_dir = TemporaryDirectory()
 
     # Parse args and prepare configuration
     args = docopt(__doc__, version='0.2.0')
-
     top_cat_config = get_config(config_file_loc=args['--config'])
     update_config_with_args(top_cat_config, args)
 
@@ -433,7 +436,7 @@ def main():
     guarantee_tables_exist(db_conn)
     db_cur = db_conn.cursor()
 
-    # Get the function to do labelling ready
+    # Depending on the config, we will prepare wrapper around a tensorflow model (deeplabv3) XOR around the google vision api
     labelling_function = get_labelling_funtion_given_config(top_cat_config)
 
     # What's new in /r/aww?
