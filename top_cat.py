@@ -64,10 +64,11 @@ if hasattr(__builtins__,'__IPYTHON__'):
     THIS_SCRIPT_DIR = os.getcwd()
 else:
     THIS_SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_CONFIG = toml.load(THIS_SCRIPT_DIR+'/top_cat_default.toml')
 
 
 def get_config(config_file_loc="~/.top_cat/config.toml"):
+    default_config = toml.load(THIS_SCRIPT_DIR+'/top_cat_default.toml')
+
     user_config_file_loc = os.path.expanduser(config_file_loc)
     # Let's query the config file
     if os.path.isfile(user_config_file_loc):
@@ -79,12 +80,12 @@ def get_config(config_file_loc="~/.top_cat/config.toml"):
     else:
         top_cat_user_config = dict()
 
-    # Make sure to crash if any extra config options are specified
-    available_opts = list(DEFAULT_CONFIG)
+    # Make sure to crash if any config options are specified that we don't know what to do with
+    available_opts = list(default_config.keys())
     for user_config_opt in top_cat_user_config.keys():
-        assert user_config_opt in DEFAULT_CONFIG, f"# ERROR: You specified an unsopported option: {user_config_opt} \n# Maybe you meant {available_opts[np.argmax([difflib.SequenceMatcher(None, user_config_opt, opt).ratio() for opt in available_opts])]}\n# Possible choices: {available_opts}"
+        assert user_config_opt in available_opts, f"# ERROR: You specified an unsopported option: {user_config_opt} \n# Maybe you meant {available_opts[np.argmax([difflib.SequenceMatcher(None, user_config_opt, opt).ratio() for opt in available_opts])]}\n# Possible choices: {available_opts}"
 
-    top_cat_config = {**DEFAULT_CONFIG, **top_cat_user_config}
+    top_cat_config = {**default_config, **top_cat_user_config}
 
     # If we plan on posting to social media, let's make sure we have tokens to try
     assert ( not top_cat_config['POST_TO_SLACK_TF']
@@ -161,8 +162,8 @@ def fix_imgur_url(url):
         if '.' not in url.split("/")[-1]:
             r = requests.get(url)
             # I could have used something fancier but this works fine
-            img_link = re.findall('<link rel="image_src"\s*href="([^"]+)"/>', r.text)
-            video_link = re.findall('<meta property="og:video"\s*content="([^"]+)"\s*/>', r.text)
+            img_link = re.findall(r'<link rel="image_src"\s*href="([^"]+)"/>', r.text)
+            video_link = re.findall(r'<meta property="og:video"\s*content="([^"]+)"\s*/>', r.text)
             assert img_link or video_link, "imgur url fixing failed for " + url
             return (img_link or video_link)[0]
         else:
