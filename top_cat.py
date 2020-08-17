@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 Nick Hahner 2017-2020
@@ -55,7 +55,8 @@ import difflib
 MAX_IMS_PER_VIDEO = 10
 
 # A little trial and error got me this cutoff. Maybe change it for a different model type?
-SCORE_CUTOFF = .05
+# SCORE_CUTOFF = .05  # For deeplabv3
+SCORE_CUTOFF = .5    # For google vision api
 
 import mimetypes
 
@@ -124,6 +125,7 @@ def guarantee_tables_exist(db_conn):
                 top_post (
                     top_post_id   INTEGER PRIMARY KEY,
                     post_id       int not null,
+                    label         text not null,
                     timestamp_ins text not null default current_timestamp,
                     FOREIGN KEY(post_id) REFERENCES post(post_id)
                 );
@@ -359,7 +361,7 @@ def repost_to_slack(post, label, top_cat_config):
                         "fallback": f"Top {label} on /r/aww\n{post['url']}",
                         "title": post['title'],
                         # Currently this only works for images and gifs... :(
-                        "image_url": post['url']
+#                        "image_url": post['url']
                     }
                 ])
         }
@@ -394,12 +396,12 @@ def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
         # Iterate down the list of reddit posts and see if there's a label_to_search_for for the post.
         # FIXME: this part
         if label_to_search_for in top_post['labels']:
-            db_cur.execute('SELECT * FROM top_post WHERE post_id=?', (top_post['post_id'],))
+            db_cur.execute('SELECT * FROM top_post WHERE post_id=? and label=?', (top_post['post_id'],label_to_search_for))
             already_reposted = db_cur.fetchone()
             if not already_reposted:
                 repost_to_slack(top_post,label_to_search_for,top_cat_config)
                 # repost_to_facebook(top_post,label_to_search_for,top_cat_config)
-                db_cur.execute("INSERT INTO top_post (post_id) values (?)", (top_post['post_id'],))
+                db_cur.execute("INSERT INTO top_post (post_id,label) values (?,?)", (top_post['post_id'],label_to_search_for))
                 db_conn.commit()
                 print(f'Got a new top {label_to_search_for}: {top_post["title"]} {top_post["url"]}')
 
