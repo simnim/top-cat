@@ -241,6 +241,7 @@ def add_labels_for_image_to_post_d(post, labelling_function):
     # Delete labels below threshold
     for label in list(proportion_label_in_post.keys()):
         if proportion_label_in_post[label] < SCORE_CUTOFF:
+            # print(f'deleting {label} from consideration {proportion_label_in_post[label]} < {SCORE_CUTOFF}', file=sys.stderr)
             del proportion_label_in_post[label]
 
     # Add labels and scores to posts
@@ -282,12 +283,15 @@ def cast_to_pil_imgs(img_or_vid):
         return [img_or_vid]
     elif type(img_or_vid) == np.ndarray:
         return [Image.fromarray(cv2.cvtColor(img_or_vid, cv2.COLOR_BGR2RGB))]
+    elif type(img_or_vid) == list and len(img_or_vid) == 0:
+        print('# WARNING: Blank list passed', file=sys.stderr)
+        return img_or_vid
     elif type(img_or_vid) == list and issubclass(type(img_or_vid[0]),Image.Image):
         return img_or_vid
     elif type(img_or_vid) == list and type(img_or_vid[0]) == np.ndarray:
         return [ Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)) for frame in img_or_vid ]
     else:
-        print("wtf is the image?", img_or_vid, type(img_or_vid), type(img_or_vid[0]))
+        print("# WARNING: wtf is the image?", img_or_vid, type(img_or_vid), type(img_or_vid[0]), file=sys.stderr)
         return img_or_vid
 
 
