@@ -21,8 +21,8 @@ necessary packages: `pip install -U google-api-python-client requests oauth2clie
 To get fb posts working: `pip install -U facebook-sdk`
 
 # Config file
-`~/.top_cat.json`:
-This optional config file holds settings for the program. Check out `top_cat_example_config` for an example file
+`~/.top_cat/config.toml`:
+This optional config file holds settings for the program. Check out `top_cat_default.toml` for settings and an explanation of each variable
 
 
 ### optional setup, but highly recommended:
@@ -36,9 +36,3 @@ I followed this guide http://nodotcom.org/python-facebook-tutorial.html to get e
 
 # Usage:
 Run `./top_cat.py` as often as you like. It'll only query the google vision api once per image. Similarly, it'll also only post an image to slack once (if you've enabled that feature.)
-
-# Notes:
-I didn't bother with option parsing because it's supposed to be CRON centric (and because it'd be more work.) I might add option parsing if I expand this to also use other image labelling algorithms and want to play with it more interactively, but it's not worth it this second.
-
-# See also:
-https://github.com/fchollet/deep-learning-models (un?)fortunately google's vision api is currently faster and more accurate from my experience, so I didn't bother pursuing it, but check out some of the scripts in that repo for an interesting afternoon.

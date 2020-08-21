@@ -305,7 +305,7 @@ def populate_labels_in_db_for_posts(
         ):
     db_cur = db_conn.cursor()
     # Make sure we have the images and labels stashed for any potentially new posts
-    # Usually we just skip over a post since it's probably been in the top N for a few hours already
+    # Usually we just skip adding labels for a post since it's probably been in the top N for a few hours already and had many chances to be labelled already
     for post_i, post in enumerate(reddit_response_json):
         db_cur.execute('SELECT post_id, media_hash FROM post WHERE url=?', (post['url'],))
         image_found = db_cur.fetchone()
@@ -398,7 +398,6 @@ def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
     top_post = reddit_response_json[0]
     for label_to_search_for in top_cat_config['LABELS_TO_SEARCH_FOR']:
         # Iterate down the list of reddit posts and see if there's a label_to_search_for for the post.
-        # FIXME: this part
         if label_to_search_for in top_post['labels']:
             db_cur.execute('SELECT * FROM top_post WHERE post_id=? and label=?', (top_post['post_id'],label_to_search_for))
             already_reposted = db_cur.fetchone()
@@ -415,7 +414,9 @@ def get_labelling_funtion_given_config(config):
         from google.cloud import vision
         gvision_client = vision.ImageAnnotatorClient()
         from google_vision_labeler import get_labels_from_frames_gvision
-        return lambda frames: get_labels_from_frames_gvision(gvision_client, frames)
+        def labelling_funtion_gvision(frames):
+            return get_labels_from_frames_gvision(gvision_client, frames)
+        return labelling_funtion_gvision
     else:
         # Only load tf and the deeplab model now that we've decided we want them
         import tensorflow as tf
@@ -428,7 +429,9 @@ def get_labelling_funtion_given_config(config):
             origin="http://download.tensorflow.org/models/"+config['DEEPLABV3_FILE_NAME'],
             cache_subdir='models')
         model = DeepLabModel(deeplabv3_model_tar)
-        return lambda frames: get_labels_from_frames_deeplab(model, frames)
+        def labelling_funtion_deeplabv3(frames):
+            return get_labels_from_frames_deeplab(model, frames)
+        return labelling_funtion_deeplabv3
 
 def main():
     temp_dir = TemporaryDirectory()

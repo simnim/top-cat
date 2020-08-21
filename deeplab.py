@@ -1,3 +1,6 @@
+# https://github.com/tensorflow/models/blob/master/research/deeplab/deeplab_demo.ipynb
+# Mostly taken from ^ but cleaned and modified a bit to be easier for me to use.
+
 import os
 from io import BytesIO
 import tarfile
@@ -10,11 +13,10 @@ import numpy as np
 from PIL import Image
 from collections import Counter
 
-#%tensorflow_version 1.x
 import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'; tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-# https://github.com/tensorflow/models/blob/master/research/deeplab/deeplab_demo.ipynb
 class DeepLabModel(object):
     """Class to load deeplab model and run inference."""
 

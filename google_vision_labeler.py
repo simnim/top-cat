@@ -14,6 +14,7 @@ def get_labels_for_im_using_vision_api(gvision_client, pil_img):
             ,[l.score for l in labels_for_im.label_annotations]
            )
 
+#FIXME: I'm averaging the score accross all the sampled frames... probably need to rethink this one but it works well enough for now
 def get_labels_from_frames_gvision(gvision_client, frames_in_video):
     # Counter can also keep track of fractional values
     proportion_label_in_post = Counter()
@@ -31,6 +32,15 @@ def get_labels_from_frames_gvision(gvision_client, frames_in_video):
 
 
 # # For debugging purposes
+
+# pil_img = Image.open('/Users/nim/git/top_cat/imgs/sink_cats.jpg')
+# gvision_client = vision.ImageAnnotatorClient()
+# pil_img.thumbnail((1000,1000), Image.ANTIALIAS)
+# b = BytesIO()
+# pil_img.save(b, format='jpeg')
+# im_bytes=b.getvalue()
+# labels_for_im = gvision_client.label_detection({'content': im_bytes}, max_results=50)
+
 
 # pil_img = Image.open('/Users/nim/git/top_cat/imgs/sink_cats.jpg')
 # l_s = get_labels_for_im_using_vision_api(pil_img)
