@@ -9,3 +9,4 @@ pyjq
 opencv-python
 google-cloud-vision
 flask
+aiosql

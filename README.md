@@ -58,4 +58,4 @@ Check out `top_cat_default.toml` for settings and an explanation of each variabl
 
 
 # How to run flask webserver
-If you have python-dotenv installed you can just do `flask run` in the project dir, otherwise you can do `export FLASK_APP=serve-top-posts.py; flask run`  (Caveot: the navbar up top assumes you're processing top cat and top dog, but no other labels.)
+If you have python-dotenv installed you can just do `flask run` in the project dir, otherwise you can do `export FLASK_APP=serve-top-posts.py; flask run`  (Caveot: the navbar up top assumes you're processing top cat and top dog, but no other labels...)
