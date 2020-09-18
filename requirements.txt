@@ -8,3 +8,4 @@ tensorflow
 pyjq
 opencv-python
 google-cloud-vision
+flask

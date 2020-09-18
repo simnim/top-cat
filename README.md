@@ -1,34 +1,26 @@
 # Purpose:
-Automate finding cute cat and dog pictures from /r/aww and remember them forever. Enjoy.
-This project is just for fun. It has no business prospects. It's not enterprise grade (tm).
+Automate finding cute cat and dog pictures from /r/aww and remember them forever.
+This project is just for fun. I'm not making any money from it.
 
-Check #FIXME for the latest top cat on /r/aww
+If the top post has a cat in it, then it's a top cat, if it's got a dog, then it's a top dog. You can also customize what labels to look for with the user config file.
+
+This project also comes with a flask app so you can browse the latest top cat and dog in a web browser! I'm hosting this app @ #FIXME so feel free to check it out.
 
 # Install
 
-## Optional but encouraged:
-
-* Install pyenv and pyenv-virtualenv
-* Create an environment for this project
-
-## Required steps
-
 ```bash
-## Optional steps:
 # In case you haven't done so check it out and cd into the repo dir
 mkdir -p ~/git
 cd ~/git
-git checkout https://github.com/simnim/top_cat.git
-cd top_cat
+git clone https://github.com/simnim/top-cat.git
+cd top-cat
 
+## Optional steps:
 # If you want to use pyenv-virtualenv this sets it up for you
 pyenv install 3.8.5
 pyenv virtualenv 3.8.5 top-cat
 pyenv local top-cat
-
 ## /Optional steps
-
-## Required steps:
 
 # Either way make sure you have the necessary packages installed
 pip install -r requirements.txt
@@ -39,28 +31,31 @@ cd ~/.top_cat
 $EDITOR config.toml
 
 # ok, now you should be good to go on running the app and finding cats and dogs
-cd ~/git/top_cat
+cd ~/git/top-cat
 
 # Run it
 ./top_cat.py -v
 ```
 
-## You can also set up CRON to call it every 5 mins instead
 
-
-# Config file
+# Set up your config file
 `~/.top_cat/config.toml`:
-This optional config file holds settings for the program. Check out `top_cat_default.toml` for settings and an explanation of each variable
 
-
-### optional setup, but highly recommended:
-Create a slack team, a `#top_cat` channel, and generate an api token @ https://api.slack.com/custom-integrations/legacy-tokens
-(At the time that I originally figured out slack integrations this was the standard way. It still works, but maybe some day I'll swap it out when they get rid of it because "legacy".)
-
-### How I made the facebook page:
-I followed this guide http://nodotcom.org/python-facebook-tutorial.html to get everything set up. I needed to get a facebook page_access_token so I could post to the page. I also needed the help of the following pages to get it all working: https://developers.facebook.com/tools/explorer/ https://developers.facebook.com/tools/debug/accesstoken/ https://developers.facebook.com/apps
+Check out `top_cat_default.toml` for settings and an explanation of each variable
 
 
 
-# Usage:
-Run `./top_cat.py` as often as you like. It'll only query the google vision api once per image. Similarly, it'll also only post an image to slack once (if you've enabled that feature.)
+## You can also set up CRON to call top_cat.py every 5 mins
+`./top_cat.py` will only ever query the google vision api once per unique image/video url. Similarly, it'll also only post to slack once per new top cat/dog (if you set up slack integration)
+
+# Optional extra setup:
+## Add slack integration:
+* Create an app @ https://api.slack.com/apps/
+* [ OAuth & Permissions ] -> Add `chat:write` and `chat:write.customize` under Scopes
+* [ OAuth & Permissions ] -> click [ Install App to Workplace ]
+* ... requesting permission to access ... -> click [ Allow ]
+* Copy paste your fresh token into your user config file @ `~/.top_cat/config.toml` (token looks like `xoxb-...`)
+
+
+# How to run flask webserver
+If you have python-dotenv installed you can just do `flask run` in the project dir, otherwise you can do `export FLASK_APP=serve-top-posts.py; flask run`  (Caveot: the navbar up top assumes you're processing top cat and top dog, but no other labels.)
