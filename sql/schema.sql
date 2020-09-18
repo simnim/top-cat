@@ -1,4 +1,4 @@
--- name: create_schema#
+-- name: create_tables_and_indexes#
 CREATE TABLE IF NOT EXISTS
 post (
     post_id       INTEGER PRIMARY KEY,

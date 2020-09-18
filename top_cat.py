@@ -258,7 +258,6 @@ def populate_labels_in_db_for_posts(
             , db_conn
             , config
         ):
-    db_cur = db_conn.cursor()
     # Make sure we have the images and labels stashed for any potentially new posts
     # Usually we just skip adding labels for a post since it's probably been in the top N for a few hours already and had many chances to be labelled already
     for post_i, post in enumerate(reddit_response_json):
@@ -339,7 +338,6 @@ def update_config_with_args(config, args):
 
 
 def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
-    db_cur = db_conn.cursor()
     # We're ready to figure out if the post has climbed up the ranks and become a top post
     # Only consider the first post... maybe do something fancier later.
     top_post = reddit_response_json[0]
@@ -390,7 +388,6 @@ def main():
     # Connect to the db. Create the sqlite file if necessary.
     db_conn = sqlite3.connect(os.path.expanduser(top_cat_config['DB_FILE']))
     guarantee_tables_exist(db_conn)
-    db_cur = db_conn.cursor()
 
     # Depending on the config, we will prepare wrapper around a tensorflow model (deeplabv3) XOR around the google vision api
     labelling_function = get_labelling_funtion_given_config(top_cat_config)
