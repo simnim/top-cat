@@ -50,6 +50,10 @@ import string
 import random
 import pprint
 import difflib
+import aiosql
+
+QUERIES = aiosql.from_path("sql", "sqlite3")
+
 
 # NOTE: Maybe add this to the config?
 MAX_IMS_PER_VIDEO = 10
@@ -160,17 +164,18 @@ def fix_imgur_url(url):
     eg "http://i.imgur.com/mc316Un" -> "http://i.imgur.com/mc316Un.jpg"
     """
     if "imgur.com" in url:
-        # Don't bother doing anything fancy if it already ends in .jpg
+        # Don't bother doing anything fancy if it already ends in .jpg etc
         if '.' not in url.split("/")[-1]:
-            r = requests.get(url)
-            # I could have used something fancier but this works fine
-            img_link = re.findall(r'<link rel="image_src"\s*href="([^"]+)"/>', r.text)
-            video_link = re.findall(r'<meta property="og:video"\s*content="([^"]+)"\s*/>', r.text)
-            assert img_link or video_link, "imgur url fixing failed for " + url
-            return (img_link or video_link)[0]
-        else:
-            # Just in case it ends in .gifv
-            return url.replace('.gifv','.mp4')
+            imgur_id = re.findall('imgur.com/([^.]+)',url)[0]
+            req = requests.get(url)
+            possible_media_links = set(re.findall(r'content="(http.{0,50}%s\.[^"?]+)[?"]'%imgur_id, req.text))
+            assert possible_media_links, "can't find the media links in imgur url " + url
+            suffix_mapto_link = dict(zip([l.split('.')[-1] for l in possible_media_links], possible_media_links))
+            # For videos it gives us a preview, and there's other possible junk... so prioritize videos then images then fallback on whatever we can...
+            for suf in ['mp4', 'webm', 'gif', 'png', 'jpg', 'jpeg']:
+                if suf in suffix_mapto_link:
+                    return suffix_mapto_link[suf]
+            return possible_media_links[0]
     return url
 
 
@@ -307,22 +312,16 @@ def populate_labels_in_db_for_posts(
     # Make sure we have the images and labels stashed for any potentially new posts
     # Usually we just skip adding labels for a post since it's probably been in the top N for a few hours already and had many chances to be labelled already
     for post_i, post in enumerate(reddit_response_json):
-        db_cur.execute('SELECT post_id, media_hash FROM post WHERE url=?', (post['url'],))
-        image_found = db_cur.fetchone()
+        image_found = QUERIES.get_top_post_given_url(db_conn, **post)
         if not image_found:
             # Did not find the url, must be a new post. (or maybe a repost...)
             add_image_content_to_post_d(post,temp_dir)
             add_labels_for_image_to_post_d(post,labelling_function)
 
             #Check if we already have the file in the db
-            db_cur.execute("INSERT INTO post (url, media_hash, title) values (?,?,?)",
-                              ( post['url'],
-                                post['media_hash'],
-                                post['title'] )
-                        )
+            QUERIES.record_post(db_conn, **post)
             db_conn.commit()
-            db_cur.execute('SELECT post_id FROM post WHERE url=?', (post['url'],))
-            post_id = db_cur.fetchone()[0]
+            post_id = QUERIES.get_top_post_given_url(db_conn, **post)[0]
             post['post_id'] = post_id
 
             # Print out each label and label's score. Also store each result in the db.)
@@ -334,15 +333,13 @@ def populate_labels_in_db_for_posts(
                 if config['VERBOSE']:
                     print('    ',label,'=',score, file=sys.stderr)
                 if label != 'background':
-                    db_cur.execute("INSERT INTO post_label (post_id, label, score) values (?,?,?)",
-                                (post_id, label, score))
+                    QUERIES.record_post_label(db_conn, post_id=post_id, label=label, score=score)
                     db_conn.commit()
         else:
-            post['media_hash'] = image_found[1]
             post['post_id'] = image_found[0]
+            post['media_hash'] = image_found[1]
             # Fetch labels from db
-            db_cur.execute(" SELECT label, score FROM post_label where post_id=? order by score desc", (image_found[0],))
-            fetched_labels = db_cur.fetchall()
+            fetched_labels = QUERIES.get_labels_and_scores_for_post(db_conn, **post)
             if fetched_labels:
                 post['labels'], post['scores'] = zip(*fetched_labels)
             else:
@@ -350,7 +347,7 @@ def populate_labels_in_db_for_posts(
                 post['scores'] = [1.0]
 
 
-def repost_to_slack(post, label, top_cat_config):
+def maybe_repost_to_slack(post, label, top_cat_config):
     if top_cat_config['POST_TO_SLACK_TF']:
         label_map_to_channel = dict(zip(top_cat_config['LABELS_TO_SEARCH_FOR'],
                                         top_cat_config['SLACK_CHANNELS']))
@@ -399,12 +396,11 @@ def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
     for label_to_search_for in top_cat_config['LABELS_TO_SEARCH_FOR']:
         # Iterate down the list of reddit posts and see if there's a label_to_search_for for the post.
         if label_to_search_for in top_post['labels']:
-            db_cur.execute('SELECT * FROM top_post WHERE post_id=? and label=?', (top_post['post_id'],label_to_search_for))
-            already_reposted = db_cur.fetchone()
+            already_reposted = QUERIES.did_we_already_repost(db_conn, post_id=top_post['post_id'], label=label_to_search_for)
             if not already_reposted:
-                repost_to_slack(top_post,label_to_search_for,top_cat_config)
+                maybe_repost_to_slack(top_post,label_to_search_for,top_cat_config)
                 # repost_to_facebook(top_post,label_to_search_for,top_cat_config)
-                db_cur.execute("INSERT INTO top_post (post_id,label) values (?,?)", (top_post['post_id'],label_to_search_for))
+                QUERIES.record_the_repost(db_conn, post_id=top_post['post_id'], label=label_to_search_for)
                 db_conn.commit()
                 print(f'Got a new top {label_to_search_for}: {top_post["title"]} {top_post["url"]}')
 

@@ -1,4 +1,4 @@
--- name: get_top_posts
+-- name: get_top_posts_for_flask
 -- Fetches the most recent 10 posts for a particular label
 select
       p.url as media
