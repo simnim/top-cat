@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <head>
+      {% if title %}
+          <title>{{ title }}</title>
+      {% else %}
+          <title>Nick's Webpage</title>
+      {% endif %}
+    </head>
+    <body>
+      <nav id="navbar">
+        <div class="container">
+          <ul>
+              <li><a href="/index">About</a></li>
+              <li><a href="/top/cat">Top Cat</a></li>
+              <li><a href="/top/dog">Top Dog</a></li>
+          </ul>
+        </div>
+      </nav>
+        {% block content %}{% endblock %}
+    </body>
+</html>
+
+
