@@ -1,24 +1,52 @@
-# Preamble:
-The goal is really just to automate finding cute cat pictures. Enjoy.
+# Purpose:
+Automate finding cute cat and dog pictures from /r/aww and remember them forever. Enjoy.
 This project is just for fun. It has no business prospects. It's not enterprise grade (tm).
 
-Check https://www.facebook.com/top.felis.catus/ for the latest top cat on /r/aww
+Check #FIXME for the latest top cat on /r/aww
 
-# Purpose:
-The purpose of this repo is to find the top cat picture at the moment at /r/aww
-The project aims to enable:
-* Via a cron job, run top_cat.py to query /r/aww every hour and use image classification apis (or libraries) to find the top cat picture at the time.
-* Store entries in a db so we can look at things over time and memoize api responses (saving $$$$$$ and making re-running the script a bunch of times in a row sane and logical.)
-* Push these pictures to a facebook page and / or a slack channel so you can always get a peek at the latest top_cat without ever visiting /r/aww. Bonus: Either of these act as a nice recording of top cat history so you always have a high quality list of cat pictures to choose from even months later, by which time reddit may have made it hard to find these lost gems.
-* "Secret" bonus: you can also ask for dog pictures instead, just edit the config file.
+# Install
 
-# Setup:
-Get your google vision api access account setup and install the credentials on your machine.
-aka google `GOOGLE_APPLICATION_CREDENTIALS`
+## Optional but encouraged:
 
-necessary packages: `pip install -U google-api-python-client requests oauth2client`
+* Install pyenv and pyenv-virtualenv
+* Create an environment for this project
 
-To get fb posts working: `pip install -U facebook-sdk`
+## Required steps
+
+```bash
+## Optional steps:
+# In case you haven't done so check it out and cd into the repo dir
+mkdir -p ~/git
+cd ~/git
+git checkout https://github.com/simnim/top_cat.git
+cd top_cat
+
+# If you want to use pyenv-virtualenv this sets it up for you
+pyenv install 3.8.5
+pyenv virtualenv 3.8.5 top-cat
+pyenv local top-cat
+
+## /Optional steps
+
+## Required steps:
+
+# Either way make sure you have the necessary packages installed
+pip install -r requirements.txt
+
+# Set up your config so you can post to slack
+mkdir -p ~/.top_cat
+cd ~/.top_cat
+$EDITOR config.toml
+
+# ok, now you should be good to go on running the app and finding cats and dogs
+cd ~/git/top_cat
+
+# Run it
+./top_cat.py -v
+```
+
+## You can also set up CRON to call it every 5 mins instead
+
 
 # Config file
 `~/.top_cat/config.toml`:
