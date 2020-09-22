@@ -52,9 +52,6 @@ import pprint
 import difflib
 import aiosql
 
-QUERIES = aiosql.from_path("sql", "sqlite3")
-
-
 # NOTE: Maybe add this to the config?
 MAX_IMS_PER_VIDEO = 10
 
@@ -69,6 +66,7 @@ if hasattr(__builtins__,'__IPYTHON__'):
     THIS_SCRIPT_DIR = os.getcwd()
 else:
     THIS_SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+QUERIES = aiosql.from_path(THIS_SCRIPT_DIR+"/sql", "sqlite3")
 
 
 def get_config(config_file_loc="~/.top_cat/config.toml"):
