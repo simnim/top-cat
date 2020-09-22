@@ -1,21 +1,29 @@
+# sqlite3 database file for the project
 DB_FILE = "~/.top_cat/db"
 
-# If you went to the trouble of training your own then just put the absolute path to the tgz, other weights from the tensorflow models repo are also possible. Check deeplabv3 demo ipynb for more info
+# tar file that you'll be pulling down from http://download.tensorflow.org/models/ assuming you are using deeplabv3 for labelling (requires more than 1gb memory!)
+## It's also possible to tweak it and use your own deeplab weights: just put the absolute path to the tgz
+## other weights from the tensorflow models repo are also possible. Check deeplabv3 demo ipynb for more info
 DEEPLABV3_FILE_NAME = "deeplabv3_pascal_train_aug_2018_01_04.tar.gz"
 
+# Set this to true if you want to skip using deeplabv3 and instead prefer using google vision. Minimal memory usage and still relatively cheap (approx $1/month) this is essential if you are running on the gcloud free tier for memory reasons, but if you are using your own server with a few gb ram it's cheaper to use deeplabv3)
+USE_GOOGLE_VISION = false
+
+
+# For top posts, look for these labels
 LABELS_TO_SEARCH_FOR = ["cat","dog"]
-MAX_REDDIT_API_ATTEMPTS = 20
 
-POST_TO_FB_TF = false
-FB_PAGE_ACCESS_TOKEN = "YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE"
 
-# https://api.slack.com/custom-integrations/legacy-tokens
+# If you want to post to a slack channel, follow instructions in README
 POST_TO_SLACK_TF = false
 SLACK_API_TOKEN = "YOUR__SLACK__API_TOKEN_GOES_HERE"
-# Give one channel for each label.
-# If you want them all in the same channel then you might get reposts.
+# Give one channel per label from LABELS_TO_SEARCH_FOR
 SLACK_CHANNELS = ["#top_cat", "#top_dog"]
 
 
-# Set this to true if you want to skip using deeplabv3 and instead prefer using google vision.
-USE_GOOGLE_VISION = false
+# Sometimes the reddit api server fails the first time... actually it started working consistently recently so probably can get rid of this eventually.
+MAX_REDDIT_API_ATTEMPTS = 20
+
+# If you want to post to facebook, then add your token. CURRENTLY BROKEN. FB changed their api and are much more strict about giving out tokens... I haven't bothered to fix FB posting yet. #FIXME: coming again at some point maybe
+POST_TO_FB_TF = false
+FB_PAGE_ACCESS_TOKEN = "YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE"
