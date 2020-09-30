@@ -41,7 +41,12 @@ def test_guarantee_tables_exist():
 def test_fix_imgur_url_video():
     assert fix_imgur_url('https://imgur.com/zH3iA75') == 'https://i.imgur.com/zH3iA75.mp4'
 def test_fix_imgur_pic():
-    assert fix_imgur_url('https://imgur.com/2cfU6dh') == 'https://i.imgur.com/2cfU6dh.jpg'
+    assert fix_imgur_url('https://imgur.com/2cfU6dh') in [
+          'https://i.imgur.com/2cfU6dh.jpg',
+          'https://i.imgur.com/2cfU6dh.jpeg'
+        ]
+def test_fix_imgur_gifv():
+    assert fix_imgur_url('https://imgur.com/zH3iA75') == 'https://i.imgur.com/zH3iA75.mp4'
 
 
 def test_fix_giphy_url():

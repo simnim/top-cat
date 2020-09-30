@@ -35,8 +35,7 @@ from PIL import Image
 from io import BytesIO, StringIO
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 import pyjq
-# # Because the reddit api links use escaped html strings ie &amp;
-# from xml.sax.saxutils import unescape
+
 from docopt import docopt
 
 from collections import Counter
@@ -112,6 +111,8 @@ def fix_imgur_url(url):
     eg "http://i.imgur.com/mc316Un" -> "http://i.imgur.com/mc316Un.jpg"
     """
     if "imgur.com" in url:
+        if url.endswith('.gifv'):
+            return re.sub(r'\.gifv$','.mp4',url)
         # Don't bother doing anything fancy if it already ends in .jpg etc
         if '.' not in url.split("/")[-1]:
             imgur_id = re.findall('imgur.com/([^.]+)',url)[0]
