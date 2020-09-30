@@ -48,6 +48,10 @@ Check out `top_cat_default.toml` for settings and an explanation of each variabl
 ## You can also set up CRON to call top_cat.py every 5 mins
 `./top_cat.py` will only ever query the google vision api once per unique image/video url. Similarly, it'll also only post to slack once per new top cat/dog (if you set up slack integration)
 
+```
+*/5 * * * *   $HOME/git/top_cat/cron.sh
+```
+
 # Optional extra setup:
 ## Add slack integration:
 * Create an app @ https://api.slack.com/apps/
