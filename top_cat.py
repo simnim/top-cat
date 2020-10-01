@@ -54,10 +54,6 @@ import aiosql
 # NOTE: Maybe add this to the config?
 MAX_IMS_PER_VIDEO = 10
 
-# A little trial and error got me this cutoff. Maybe change it for a different model type?
-# SCORE_CUTOFF = .05  # For deeplabv3
-SCORE_CUTOFF = .5    # For google vision api
-
 import mimetypes
 
 # So we can copy paste into ipython for debugging. Assuming we run ipython from the repo dir
@@ -158,7 +154,8 @@ def fix_url_in_dict(d):
 def query_reddit_api(config, limit=10):
     # Try really hard to get reddit api results. Sometimes the reddit API gives back empty jsons.
     for attempt in range(config['MAX_REDDIT_API_ATTEMPTS']):
-        r = requests.get(f"https://www.reddit.com/r/aww/top.json?limit={limit}", headers={'User-Agent': 'linux:top-cat:v0.2.0'})
+        r = requests.get( f"https://www.reddit.com/r/aww/top.json?limit={config['MAX_POSTS_TO_PROCESS']}"
+                         , headers={'User-Agent': 'linux:top-cat:v0.2.0'} )
         j = r.json()
         if j.get("data") is not None:
             if config['VERBOSE']:
@@ -191,12 +188,6 @@ def add_labels_for_image_to_post_d(post, labelling_function):
                         extract_frames_from_im_or_video(post['media_file'])
                     )
     proportion_label_in_post = labelling_function(frames_in_video)
-
-    # Delete labels below threshold
-    for label in list(proportion_label_in_post.keys()):
-        if proportion_label_in_post[label] < SCORE_CUTOFF:
-            # print(f'deleting {label} from consideration {proportion_label_in_post[label]} < {SCORE_CUTOFF}', file=sys.stderr)
-            del proportion_label_in_post[label]
 
     # Add labels and scores to posts
     post['labels'] = list(proportion_label_in_post.keys())
@@ -354,26 +345,12 @@ def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
 
 def get_labelling_funtion_given_config(config):
     if config['USE_GOOGLE_VISION']:
-        from google.cloud import vision
-        gvision_client = vision.ImageAnnotatorClient()
-        from google_vision_labeler import get_labels_from_frames_gvision
-        def labelling_funtion_gvision(frames):
-            return get_labels_from_frames_gvision(gvision_client, frames)
+        from google_vision_labeler import labelling_funtion_gvision
         return labelling_funtion_gvision
     else:
         # Only load tf and the deeplab model now that we've decided we want them
-        import tensorflow as tf
-        # Turn off useless TF messages
-        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'; tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-        from deeplab import DeepLabModel, get_labels_from_frames_deeplab
-        # Get the vision model ready
-        deeplabv3_model_tar = tf.keras.utils.get_file(
-            fname=config['DEEPLABV3_FILE_NAME'],
-            origin="http://download.tensorflow.org/models/"+config['DEEPLABV3_FILE_NAME'],
-            cache_subdir='models')
-        model = DeepLabModel(deeplabv3_model_tar)
-        def labelling_funtion_deeplabv3(frames):
-            return get_labels_from_frames_deeplab(model, frames)
+        from deeplab import get_labelling_func_given_config
+        labelling_funtion_deeplabv3 = get_labelling_func_given_config(config)
         return labelling_funtion_deeplabv3
 
 def main():

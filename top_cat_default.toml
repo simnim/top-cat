@@ -24,6 +24,9 @@ SLACK_CHANNELS = ["#top_cat", "#top_dog"]
 # Sometimes the reddit api server fails the first time... actually it started working consistently recently so probably can get rid of this eventually.
 MAX_REDDIT_API_ATTEMPTS = 20
 
+# How many top posts to bother processing? (Anything >= 1 is ok)
+MAX_POSTS_TO_PROCESS = 10
+
 # If you want to post to facebook, then add your token. CURRENTLY BROKEN. FB changed their api and are much more strict about giving out tokens... I haven't bothered to fix FB posting yet. #FIXME: coming again at some point maybe
 POST_TO_FB_TF = false
 FB_PAGE_ACCESS_TOKEN = "YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE"

@@ -30,6 +30,14 @@ def get_labels_from_frames_gvision(gvision_client, frames_in_video):
     return proportion_label_in_post
 
 
+## For when we import
+from google.cloud import vision
+gvision_client = vision.ImageAnnotatorClient()
+from google_vision_labeler import get_labels_from_frames_gvision
+def labelling_funtion_gvision(frames):
+    return get_labels_from_frames_gvision(gvision_client, frames)
+
+
 
 # # For debugging purposes
 

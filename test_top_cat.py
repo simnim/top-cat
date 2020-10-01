@@ -58,7 +58,7 @@ def test_fix_redd_url():
 #     pass
 
 def test_query_reddit_api():
-    reddit_response_json = query_reddit_api({'MAX_REDDIT_API_ATTEMPTS':10, 'VERBOSE':False})
+    reddit_response_json = query_reddit_api({'MAX_REDDIT_API_ATTEMPTS':10, 'VERBOSE':False, 'MAX_POSTS_TO_PROCESS':10})
     assert type(reddit_response_json) == list \
             and len(reddit_response_json) >= 1 \
             and reddit_response_json[0].keys() == frozenset(['title', 'url', 'orig_url', 'gfycat'])
@@ -81,7 +81,7 @@ def test_add_labels_for_image_to_post_d():
               'media_file': THIS_SCRIPT_DIR+'/imgs/ld0ct5djqkh51.jpg',
               'media_hash': 'c241691625515c29b02a4a66f3c947ba71566168'
             }
-    labelling_function = lambda frames: {'dog':.7, 'cat':.1}
+    labelling_function = lambda frames: {'dog':.7}
     add_labels_for_image_to_post_d(post, labelling_function)
     assert post.get('labels') is not None \
            and post.get('labels') == ['dog'] \
@@ -129,7 +129,7 @@ def test_populate_labels_in_db_for_posts():
                               'media_file': THIS_SCRIPT_DIR+'/imgs/ld0ct5djqkh51.jpg',
                               'media_hash': 'c241691625515c29b02a4a66f3c947ba71566168'
                             }]
-    labelling_function = lambda frames: {'dog':.7, 'cat':.1}
+    labelling_function = lambda frames: {'dog':.7}
     temp_dir = TemporaryDirectory()
     tempf = NamedTemporaryFile()
     db_conn = sqlite3.connect(tempf.name)

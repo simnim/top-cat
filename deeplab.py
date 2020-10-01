@@ -17,6 +17,8 @@ import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
+SCORE_CUTOFF = .05  # For deeplabv3
+
 class DeepLabModel(object):
     """Class to load deeplab model and run inference."""
 
@@ -105,4 +107,26 @@ def get_labels_from_frames_deeplab(model, frames_in_video):
         proportion_label_in_post += Counter(
                         dict(zip(labels_text, 1.0*num_pixels/seg_map.size/len(frames_in_video)))
                     )
+    # Delete labels below threshold
+    for label in list(proportion_label_in_post.keys()):
+        if proportion_label_in_post[label] < SCORE_CUTOFF:
+            # print(f'deleting {label} from consideration {proportion_label_in_post[label]} < {SCORE_CUTOFF}', file=sys.stderr)
+            del proportion_label_in_post[label]
     return proportion_label_in_post
+
+
+def get_labelling_func_given_config(config):
+    ## For importing
+    import tensorflow as tf
+    # Turn off useless TF messages
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'; tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+    from deeplab import DeepLabModel, get_labels_from_frames_deeplab
+    # Get the vision model ready
+    deeplabv3_model_tar = tf.keras.utils.get_file(
+        fname=config['DEEPLABV3_FILE_NAME'],
+        origin="http://download.tensorflow.org/models/"+config['DEEPLABV3_FILE_NAME'],
+        cache_subdir='models')
+    model = DeepLabModel(deeplabv3_model_tar)
+    def labelling_funtion_deeplabv3(frames):
+        return get_labels_from_frames_deeplab(model, frames)
+    return labelling_funtion_deeplabv3
