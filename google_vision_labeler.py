@@ -3,11 +3,13 @@ from PIL import Image
 from io import BytesIO, StringIO
 from collections import Counter
 
+SCORE_CUTOFF = .5    # For google vision api
+
 def get_labels_for_im_using_vision_api(gvision_client, pil_img):
     # In case it's too big max it at one megapixel
     pil_img.thumbnail((1000,1000), Image.ANTIALIAS)
     b = BytesIO()
-    pil_img.save(b, format='jpeg')
+    pil_img.save(b, format='png')
     im_bytes=b.getvalue()
     labels_for_im = gvision_client.label_detection({'content': im_bytes}, max_results=50)
     return ( [l.description.lower() for l in labels_for_im.label_annotations]
@@ -27,6 +29,11 @@ def get_labels_from_frames_gvision(gvision_client, frames_in_video):
         proportion_label_in_post += Counter(
                     dict(zip(labels, normed_scores))
                 )
+    # Delete labels below threshold
+    for label in list(proportion_label_in_post.keys()):
+        if proportion_label_in_post[label] < SCORE_CUTOFF:
+            # print(f'deleting {label} from consideration {proportion_label_in_post[label]} < {SCORE_CUTOFF}', file=sys.stderr)
+            del proportion_label_in_post[label]
     return proportion_label_in_post
 
 
