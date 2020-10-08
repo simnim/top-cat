@@ -61,6 +61,8 @@ if hasattr(__builtins__,'__IPYTHON__'):
     THIS_SCRIPT_DIR = os.getcwd()
 else:
     THIS_SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+
 QUERIES = aiosql.from_path(THIS_SCRIPT_DIR+"/sql", "sqlite3")
 
 
