@@ -15,6 +15,8 @@ sp.call('mkdir -p $HOME/top_cat_logs/'
 
 execution = sp.run(f'{THIS_SCRIPT_DIR}/top_cat.py -v 2>&1 > {top_cat_spam_f.name}'
                     , shell=True
+                    , stderr=sp.STDOUT
+                    , stdout=sp.PIPE
                 )
 
 output = sp.run(f'cat {top_cat_spam_f.name} | tee -a $HOME/top_cat_logs/$(date "+%Y-%m-%d")'
