@@ -29,5 +29,5 @@ def show_subpath(label):
     posts = QUERIES.get_top_posts_for_flask(conn, label)
     # We need to know if the url is for a video or a picture!
     posts = [ {**post, 'type':mimetypes.guess_type(post['media'])[0].split('/')[0]} for post in posts]
-    return render_template('top-post.html', title=title, posts=posts)
+    return render_template('top-post.html', title=title, posts=posts, label=label)
 
