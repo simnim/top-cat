@@ -197,12 +197,19 @@ def test_get_labelling_funtion_given_config():
             and 'labelling_funtion_gvision' in str(labelling_func_gvision)
 
 
-
-
-
-
-
-
-
-
+def test_flask_app():
+    import subprocess as sp
+    import time
+    # Run the flask app
+    flask_proc = sp.Popen(
+          ['flask','run']
+        , stdout=sp.DEVNULL
+        , stderr=sp.DEVNULL
+      )
+    time.sleep(1)
+    import requests
+    req = requests.get('http://127.0.0.1:5000')
+    flask_proc.kill()
+    # Make sure the index page loads and that it advertises my github
+    assert req.ok and 'https://github.com/simnim/top-cat' in req.text
 
