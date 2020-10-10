@@ -17,7 +17,8 @@ import tensorflow as tf
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-SCORE_CUTOFF = .05  # For deeplabv3
+# 5% of the pixels have to be a label
+SCORE_CUTOFF = .05
 
 class DeepLabModel(object):
     """Class to load deeplab model and run inference."""
@@ -101,7 +102,7 @@ def get_labels_from_frames_deeplab(model, frames_in_video):
     proportion_label_in_post = Counter()
     for frame in frames_in_video:
         resized_im, seg_map = model.run(frame)
-        unique_labels = np.unique(seg_map)
+        # unique_labels = np.unique(seg_map)
         labels, num_pixels = np.unique(seg_map, return_counts=True)
         labels_text = [ model.LABEL_NAMES[l] for l in labels ]
         proportion_label_in_post += Counter(

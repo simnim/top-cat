@@ -178,7 +178,6 @@ def query_reddit_api(config, limit=10):
 def add_image_content_to_post_d(post, temp_dir):
     " Add the image data to our post dictionary. Don't bother if it's already there. "
     if post.get('media_file') is None:
-        #FIXME: Make this write to a tempfile instead
         temp_fname = f"{temp_dir.name}/{''.join(random.choice(string.ascii_lowercase) for i in range(20))}.{post['url'].split('.')[-1]}"
         post['media_file'] = temp_fname
         open(temp_fname,'wb').write(requests.get(post['url'], stream=True).content)
@@ -216,7 +215,7 @@ def extract_frames_from_im_or_video(media_file):
                 break
             if int(frame_id) in frames_to_grab:
                 to_ret.append(frame)
-    #             filename = "/Users/nim/git/top_cat/debug/image_" +  str(int(frame_id)) + ".jpg"
+    #             filename = f"{THIS_SCRIPT_DIR}/debug/image_" +  str(int(frame_id)) + ".jpg"
     #             cv2.imwrite(filename, frame)
         cap.release()
         return to_ret
@@ -354,6 +353,7 @@ def get_labelling_funtion_given_config(config):
         from deeplab import get_labelling_func_given_config
         labelling_funtion_deeplabv3 = get_labelling_func_given_config(config)
         return labelling_funtion_deeplabv3
+
 
 def main():
     temp_dir = TemporaryDirectory()

@@ -3,7 +3,8 @@ from PIL import Image
 from io import BytesIO, StringIO
 from collections import Counter
 
-SCORE_CUTOFF = .5    # For google vision api
+# Average of the score for a label across all frames > 50%
+SCORE_CUTOFF = .5
 
 def get_labels_for_im_using_vision_api(gvision_client, pil_img):
     # In case it's too big max it at one megapixel
@@ -16,16 +17,15 @@ def get_labels_for_im_using_vision_api(gvision_client, pil_img):
             ,[l.score for l in labels_for_im.label_annotations]
            )
 
-#FIXME: I'm averaging the score accross all the sampled frames... probably need to rethink this one but it works well enough for now
+#NOTE: I'm averaging the score accross all the sampled frames. Could use more tinkering.
 def get_labels_from_frames_gvision(gvision_client, frames_in_video):
     # Counter can also keep track of fractional values
     proportion_label_in_post = Counter()
     for frame in frames_in_video:
-        # resized_im, seg_map = model.run(frame)
-        # unique_labels = np.unique(seg_map)
-        # labels, num_pixels = np.unique(seg_map, return_counts=True)
         labels, scores = get_labels_for_im_using_vision_api(gvision_client, frame)
+        # After dividing by the number of frames
         normed_scores = [ s/len(frames_in_video) for s in scores]
+        # we can add fractional scores to the total for each label
         proportion_label_in_post += Counter(
                     dict(zip(labels, normed_scores))
                 )
