@@ -346,13 +346,11 @@ def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
 
 def get_labelling_funtion_given_config(config):
     if config['USE_GOOGLE_VISION']:
-        from google_vision_labeler import labelling_funtion_gvision
-        return labelling_funtion_gvision
+        from google_vision_labeler import get_labelling_func_given_config
     else:
         # Only load tf and the deeplab model now that we've decided we want them
         from deeplab import get_labelling_func_given_config
-        labelling_funtion_deeplabv3 = get_labelling_func_given_config(config)
-        return labelling_funtion_deeplabv3
+    return get_labelling_func_given_config(config)
 
 
 def main():

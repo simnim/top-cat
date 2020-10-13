@@ -2,6 +2,7 @@ from google.cloud import vision
 from PIL import Image
 from io import BytesIO, StringIO
 from collections import Counter
+import os
 
 # Average of the score for a label across all frames > 50%
 SCORE_CUTOFF = .5
@@ -38,11 +39,16 @@ def get_labels_from_frames_gvision(gvision_client, frames_in_video):
 
 
 ## For when we import
-from google.cloud import vision
-gvision_client = vision.ImageAnnotatorClient()
-from google_vision_labeler import get_labels_from_frames_gvision
-def labelling_funtion_gvision(frames):
-    return get_labels_from_frames_gvision(gvision_client, frames)
+def get_labelling_func_given_config(config):
+    if not os.environ.get('GOOGLE_APPLICATION_CREDENTIALS') \
+            and config['GOOGLE_APPLICATION_CREDENTIALS'] != 'PATH_TO_YOUR_CONFIG_JSON':
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config['GOOGLE_APPLICATION_CREDENTIALS']
+    from google.cloud import vision
+    gvision_client = vision.ImageAnnotatorClient()
+    from google_vision_labeler import get_labels_from_frames_gvision
+    def labelling_funtion_gvision(frames):
+        return get_labels_from_frames_gvision(gvision_client, frames)
+    return labelling_funtion_gvision
 
 
 

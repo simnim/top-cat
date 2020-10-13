@@ -3,10 +3,10 @@
 import os
 import sys
 import subprocess as sp
-from tempfile import NamedTemporaryFile
 import datetime
 
 from top_cat import get_config, THIS_SCRIPT_DIR
+config = get_config()
 
 log_file_path = os.path.expanduser(f'~/top_cat_logs/{str(datetime.date.today())}/{str(datetime.datetime.now().time())[:8]}')
 
@@ -26,7 +26,7 @@ if execution.returncode:
     import toml
 
     slack_payload = {
-        "token": get_config()['SLACK_API_TOKEN'],
+        "token": config['SLACK_API_TOKEN'],
         "channel": '#derps',
         "text": execution.stdout.decode("utf-8"),
         "username": "TopCatRunner",
