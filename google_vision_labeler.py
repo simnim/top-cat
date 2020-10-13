@@ -40,6 +40,7 @@ def get_labels_from_frames_gvision(gvision_client, frames_in_video):
 
 ## For when we import
 def get_labelling_func_given_config(config):
+    # If the google creds env var is not set, try to get it from the user config
     if not os.environ.get('GOOGLE_APPLICATION_CREDENTIALS') \
             and config['GOOGLE_APPLICATION_CREDENTIALS'] != 'PATH_TO_YOUR_CONFIG_JSON':
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config['GOOGLE_APPLICATION_CREDENTIALS']
