@@ -41,7 +41,7 @@ cd ~/git/top-cat
 # Set up your config file
 `~/.top_cat/config.toml`:
 
-Check out `top_cat_default.toml` for settings and an explanation of each variable
+Check out `default_config.toml` for settings and an explanation of each variable
 
 
 

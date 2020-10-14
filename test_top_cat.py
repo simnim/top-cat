@@ -4,7 +4,7 @@ import pytest
 # get_config
 def test_get_config_just_defaults():
     config = get_config('/dev/null')
-    assert config == toml.load(THIS_SCRIPT_DIR+'/top_cat_default.toml')
+    assert config == toml.load(THIS_SCRIPT_DIR+'/default_config.toml')
 
 def test_get_config_one_opt():
     tempf = NamedTemporaryFile()

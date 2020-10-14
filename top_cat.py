@@ -67,7 +67,7 @@ QUERIES = aiosql.from_path(THIS_SCRIPT_DIR+"/sql", "sqlite3")
 
 
 def get_config(config_file_loc="~/.top_cat/config.toml"):
-    default_config = toml.load(THIS_SCRIPT_DIR+'/top_cat_default.toml')
+    default_config = toml.load(THIS_SCRIPT_DIR+'/default_config.toml')
 
     user_config_file_loc = os.path.expanduser(config_file_loc)
     # Let's query the config file
