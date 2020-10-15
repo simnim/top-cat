@@ -6,8 +6,12 @@ DB_FILE = "~/.top_cat/db"
 ## other weights from the tensorflow models repo are also possible. Check deeplabv3 demo ipynb for more info
 DEEPLABV3_FILE_NAME = "deeplabv3_pascal_train_aug_2018_01_04.tar.gz"
 
-# Set this to true if you want to skip using deeplabv3 and instead prefer using google vision. Minimal memory usage and still relatively cheap (approx $1/month) this is essential if you are running on the gcloud free tier for memory reasons, but if you are using your own server with a few gb ram it's cheaper to use deeplabv3)
-USE_GOOGLE_VISION = false
+# Choices are currently "deeplab" or "gvision_labeler".
+# gvision_labeler (google vision api) uses minimal memory and can run on gcloud or aws free tier linux boxes (~$1/month api calls)
+# deeplab is a tensorflow research model that requires more memory, so can't run on free tier servers
+## You can also add a new model by adding a new python file into this directory that implements `get_labelling_func_given_config(config)`
+MODEL_TO_USE = "deeplab"
+
 # If you are using google vision you need to set an environment variable for
 #  GOOGLE_APPLICATION_CREDENTIALS _or_ you can configure this in your config.
 #  Env var takes precedence over config, but calling top_cat.py via CRON means you won't have the env var set...

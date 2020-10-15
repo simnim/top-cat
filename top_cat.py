@@ -50,6 +50,7 @@ import random
 import pprint
 import difflib
 import aiosql
+import importlib
 
 # NOTE: Maybe add this to the config?
 MAX_IMS_PER_VIDEO = 10
@@ -73,28 +74,28 @@ def get_config(config_file_loc="~/.top_cat/config.toml"):
     # Let's query the config file
     if os.path.isfile(user_config_file_loc):
         try:
-            top_cat_user_config = toml.load(user_config_file_loc)
+            user_config = toml.load(user_config_file_loc)
         except Exception as e:
             print( "Malformed config file at '%s'" % (config_file_loc) , file=sys.stderr)
             exit(1)
     else:
-        top_cat_user_config = dict()
+        user_config = dict()
 
     # Make sure to crash if any config options are specified that we don't know what to do with
     available_opts = list(default_config.keys())
-    for user_config_opt in top_cat_user_config.keys():
+    for user_config_opt in user_config.keys():
         assert user_config_opt in available_opts, f"# ERROR: You specified an unsopported option: {user_config_opt} \n# Maybe you meant {available_opts[np.argmax([difflib.SequenceMatcher(None, user_config_opt, opt).ratio() for opt in available_opts])]}\n# Possible choices: {available_opts}"
 
-    top_cat_config = {**default_config, **top_cat_user_config}
+    final_config = {**default_config, **user_config}
 
     # If we plan on posting to social media, let's make sure we have tokens to try
-    assert ( not top_cat_config['POST_TO_SLACK_TF']
-                or (top_cat_config['POST_TO_SLACK_TF'] and top_cat_config['SLACK_API_TOKEN'] and top_cat_config['SLACK_API_TOKEN'] != 'YOUR__SLACK__API_TOKEN_GOES_HERE')
+    assert ( not final_config['POST_TO_SLACK_TF']
+                or (final_config['POST_TO_SLACK_TF'] and final_config['SLACK_API_TOKEN'] and final_config['SLACK_API_TOKEN'] != 'YOUR__SLACK__API_TOKEN_GOES_HERE')
             ), "If you want to post to slack then you need to add an api key to the config file!"
-    assert ( not top_cat_config['POST_TO_FB_TF']
-                or (top_cat_config['POST_TO_FB_TF'] and top_cat_config['FB_PAGE_ACCESS_TOKEN'] and top_cat_config['FB_PAGE_ACCESS_TOKEN'] != 'YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE')
+    assert ( not final_config['POST_TO_FB_TF']
+                or (final_config['POST_TO_FB_TF'] and final_config['FB_PAGE_ACCESS_TOKEN'] and final_config['FB_PAGE_ACCESS_TOKEN'] != 'YOUR__FB__PAGE_ACCESS_TOKEN_GOES_HERE')
             ), "If you want to post to FB then you need to add a fb page_access_token to the config"
-    return top_cat_config
+    return final_config
 
 
 def guarantee_tables_exist(db_conn):
@@ -287,12 +288,12 @@ def populate_labels_in_db_for_posts(
                 post['scores'] = [1.0]
 
 
-def maybe_repost_to_slack(post, label, top_cat_config):
-    if top_cat_config['POST_TO_SLACK_TF']:
-        label_map_to_channel = dict(zip(top_cat_config['LABELS_TO_SEARCH_FOR'],
-                                        top_cat_config['SLACK_CHANNELS']))
+def maybe_repost_to_slack(post, label, config):
+    if config['POST_TO_SLACK_TF']:
+        label_map_to_channel = dict(zip(config['LABELS_TO_SEARCH_FOR'],
+                                        config['SLACK_CHANNELS']))
         slack_payload = {
-            "token": top_cat_config['SLACK_API_TOKEN'],
+            "token": config['SLACK_API_TOKEN'],
             "channel": label_map_to_channel[label],
             "text": f"Top {label} on /r/aww\n{post['url']}",
             "username": f"Top{label.title()}",
@@ -307,13 +308,13 @@ def maybe_repost_to_slack(post, label, top_cat_config):
                 ])
         }
         requests.get('https://slack.com/api/chat.postMessage', params=slack_payload)
-        if top_cat_config['VERBOSE']:
+        if config['VERBOSE']:
             print('Posted to slack')
 
 # # CURRENTLY BROKEN. Facebook got rid of my access and won't give me a new one...
-# def repost_to_facebook(post, label, top_cat_config):
-#     if top_cat_config['POST_TO_FB_TF']:
-#         fb_api = facebook.GraphAPI(top_cat_config['FB_PAGE_ACCESS_TOKEN'])
+# def repost_to_facebook(post, label, config):
+#     if config['POST_TO_FB_TF']:
+#         fb_api = facebook.GraphAPI(config['FB_PAGE_ACCESS_TOKEN'])
 #         attachment =  {
 #             'name': 'top_cat',
 #             'link': img,
@@ -344,13 +345,9 @@ def maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn):
                 print(f'Got a new top {label_to_search_for}: {top_post["title"]} {top_post["url"]}')
 
 
-def get_labelling_funtion_given_config(config):
-    if config['USE_GOOGLE_VISION']:
-        from google_vision_labeler import get_labelling_func_given_config
-    else:
-        # Only load tf and the deeplab model now that we've decided we want them
-        from deeplab import get_labelling_func_given_config
-    return get_labelling_func_given_config(config)
+def get_labelling_funtion(config):
+    model_package = importlib.import_module(config['MODEL_TO_USE'])
+    return model_package.get_labelling_func_given_config(config)
 
 
 def main():
@@ -358,18 +355,18 @@ def main():
 
     # Parse args and prepare configuration
     args = docopt(__doc__, version='0.2.0')
-    top_cat_config = get_config(config_file_loc=args['--config'])
-    update_config_with_args(top_cat_config, args)
+    config = get_config(config_file_loc=args['--config'])
+    update_config_with_args(config, args)
 
     # Connect to the db. Create the sqlite file if necessary.
-    db_conn = sqlite3.connect(os.path.expanduser(top_cat_config['DB_FILE']))
+    db_conn = sqlite3.connect(os.path.expanduser(config['DB_FILE']))
     guarantee_tables_exist(db_conn)
 
     # Depending on the config, we will prepare wrapper around a tensorflow model (deeplabv3) XOR around the google vision api
-    labelling_function = get_labelling_funtion_given_config(top_cat_config)
+    labelling_function = get_labelling_funtion(config)
 
     # What's new in /r/aww?
-    reddit_response_json = query_reddit_api(top_cat_config)
+    reddit_response_json = query_reddit_api(config)
 
     # Label everything... not really necessary since we could just label
     #   the top_post but nice to have in the db regardless
@@ -378,13 +375,13 @@ def main():
             , labelling_function=labelling_function
             , temp_dir=temp_dir
             , db_conn=db_conn
-            , config=top_cat_config
+            , config=config
         )
 
-    if top_cat_config['VERBOSE']:
+    if config['VERBOSE']:
         pprint.pp(reddit_response_json)
 
-    maybe_repost_to_social_media(reddit_response_json, top_cat_config, db_conn)
+    maybe_repost_to_social_media(reddit_response_json, config, db_conn)
 
 
 

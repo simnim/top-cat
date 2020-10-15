@@ -77,7 +77,7 @@ def test_add_labels_for_image_to_post_d():
               'url': 'https://i.redd.it/ld0ct5djqkh51.jpg',
               'orig_url': 'https://i.redd.it/ld0ct5djqkh51.jpg',
               'gfycat': None,
-              'media_file': THIS_SCRIPT_DIR+'/imgs/ld0ct5djqkh51.jpg',
+              'media_file': THIS_SCRIPT_DIR+'/imgs/dog/ld0ct5djqkh51.jpg',
               'media_hash': 'c241691625515c29b02a4a66f3c947ba71566168'
             }
     labelling_function = lambda frames: {'dog':.7}
@@ -90,7 +90,7 @@ def test_add_labels_for_image_to_post_d():
 
 
 def test_extract_frames_from_im_or_video():
-    frames = extract_frames_from_im_or_video(THIS_SCRIPT_DIR+'/imgs/wzkv43qxa1c51.mp4')
+    frames = extract_frames_from_im_or_video(THIS_SCRIPT_DIR+'/imgs/cat/wzkv43qxa1c51.mp4')
     frame_hashes = tuple(hashlib.sha1(bytes(f)).hexdigest() for f in frames)
     # Test currently relies on MAX_IMS_PER_VIDEO == 10
     assert frame_hashes == ('5fb877585c64b2b7233a8305f2b9d43243f8a82b',
@@ -107,11 +107,11 @@ def test_extract_frames_from_im_or_video():
 
 
 def test_cast_to_pil_imgs_from_pil():
-    pil_im = Image.open(THIS_SCRIPT_DIR+'/imgs/cat_with_a_hat.jpg')
+    pil_im = Image.open(THIS_SCRIPT_DIR+'/imgs/cat/cat_with_a_hat.jpg')
     assert [pil_im] == cast_to_pil_imgs(pil_im) \
             and [pil_im] == cast_to_pil_imgs(cast_to_pil_imgs(pil_im))
 def test_cast_to_pil_imgs_from_cv2():
-    pil_im = cv2.imread(THIS_SCRIPT_DIR+'/imgs/cat_with_a_hat.jpg')
+    pil_im = cv2.imread(THIS_SCRIPT_DIR+'/imgs/cat/cat_with_a_hat.jpg')
     pil_imgs = cast_to_pil_imgs(pil_im)
     assert type(pil_imgs) == list \
             and type(pil_imgs[0]) == Image.Image \
@@ -125,7 +125,7 @@ def test_populate_labels_in_db_for_posts():
                               'url': 'https://i.redd.it/ld0ct5djqkh51.jpg',
                               'orig_url': 'https://i.redd.it/ld0ct5djqkh51.jpg',
                               'gfycat': None,
-                              'media_file': THIS_SCRIPT_DIR+'/imgs/ld0ct5djqkh51.jpg',
+                              'media_file': THIS_SCRIPT_DIR+'/imgs/dog/ld0ct5djqkh51.jpg',
                               'media_hash': 'c241691625515c29b02a4a66f3c947ba71566168'
                             }]
     labelling_function = lambda frames: {'dog':.7}
@@ -186,11 +186,11 @@ def test_update_config_with_args():
 
 
 # @pytest.mark.slow
-def test_get_labelling_funtion_given_config():
+def test_get_labelling_funtion():
     base_config = get_config('/dev/null')
-    labelling_func_deeplab = get_labelling_funtion_given_config(base_config)
-    base_config['USE_GOOGLE_VISION'] = True
-    labelling_func_gvision = get_labelling_funtion_given_config(base_config)
+    labelling_func_deeplab = get_labelling_funtion(base_config)
+    base_config['MODEL_TO_USE'] = 'gvision_labeler'
+    labelling_func_gvision = get_labelling_funtion(base_config)
     # Make sure we returned the deeplabv3 model by default
     assert 'labelling_funtion_deeplabv3' in str(labelling_func_deeplab) \
             and 'labelling_funtion_gvision' in str(labelling_func_gvision)

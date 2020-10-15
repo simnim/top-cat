@@ -31,15 +31,16 @@ def get_posts_including_labels_and_correctness(labelling_function):
 
 def test_gvision():
     config = get_config()
-    config['USE_GOOGLE_VISION'] = True
-    labelling_function = get_labelling_funtion_given_config(config)
+    config['MODEL_TO_USE'] = 'gvision_labeler'
+    labelling_function = get_labelling_funtion(config)
 
     post_dicts = get_posts_including_labels_and_correctness(labelling_function)
     assert all([ p['correct_label'] for p in post_dicts])
 
 def test_deeplab():
     config = get_config()
-    labelling_function = get_labelling_funtion_given_config(config)
+    config['MODEL_TO_USE'] = 'deeplab'
+    labelling_function = get_labelling_funtion(config)
 
     post_dicts = get_posts_including_labels_and_correctness(labelling_function)
     assert all([ p['correct_label'] for p in post_dicts])
