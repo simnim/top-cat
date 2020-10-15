@@ -51,10 +51,6 @@ import pprint
 import difflib
 import aiosql
 import importlib
-
-# NOTE: Maybe add this to the config?
-MAX_IMS_PER_VIDEO = 10
-
 import mimetypes
 
 # So we can copy paste into ipython for debugging. Assuming we run ipython from the repo dir
@@ -162,7 +158,7 @@ def query_reddit_api(config, limit=10):
         j = r.json()
         if j.get("data") is not None:
             if config['VERBOSE']:
-                print( "Succesfully queried the reddit api after", attempt+1, "attempts" , file=sys.stderr)
+                print( "# Succesfully queried the reddit api after", attempt+1, "attempts" , file=sys.stderr)
             break
         else:
             if config['VERBOSE']:
@@ -185,9 +181,9 @@ def add_image_content_to_post_d(post, temp_dir):
         post['media_hash'] = hashlib.sha1(open(temp_fname,'rb').read()).hexdigest()
 
 
-def add_labels_for_image_to_post_d(post, labelling_function):
+def add_labels_for_image_to_post_d(post, labelling_function, config):
     frames_in_video = cast_to_pil_imgs(
-                        extract_frames_from_im_or_video(post['media_file'])
+                        extract_frames_from_im_or_video(post['media_file'], config)
                     )
     proportion_label_in_post = labelling_function(frames_in_video)
 
@@ -196,7 +192,7 @@ def add_labels_for_image_to_post_d(post, labelling_function):
     post['scores'] = list(proportion_label_in_post.values())
 
 
-def extract_frames_from_im_or_video(media_file):
+def extract_frames_from_im_or_video(media_file, config):
     mime_t = mimetypes.MimeTypes().guess_type(media_file)[0]
     if mime_t.split('/')[0] == 'video' or mime_t == 'image/gif':
         # Modified from https://answers.opencv.org/question/62029/extract-a-frame-every-second-in-python/
@@ -205,8 +201,8 @@ def extract_frames_from_im_or_video(media_file):
         frame_rate = cap.get(cv2.CAP_PROP_FPS)
         frames_in_video = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         seconds_in_video = frames_in_video/frame_rate
-        if seconds_in_video > MAX_IMS_PER_VIDEO:
-            frames_to_grab = np.linspace(0, frames_in_video-1, num=MAX_IMS_PER_VIDEO, dtype=int)
+        if seconds_in_video > config['MAX_IMS_PER_VIDEO']:
+            frames_to_grab = np.linspace(0, frames_in_video-1, num=config['MAX_IMS_PER_VIDEO'], dtype=int)
         else:
             frames_to_grab = [int(f) for f in np.arange(0,frames_in_video,frame_rate)]
         while(cap.isOpened()):
@@ -257,7 +253,7 @@ def populate_labels_in_db_for_posts(
         if not image_found:
             # Did not find the url, must be a new post. (or maybe a repost...)
             add_image_content_to_post_d(post,temp_dir)
-            add_labels_for_image_to_post_d(post,labelling_function)
+            add_labels_for_image_to_post_d(post,labelling_function,config)
 
             #Check if we already have the file in the db
             QUERIES.record_post(db_conn, **post)

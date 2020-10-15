@@ -81,7 +81,7 @@ def test_add_labels_for_image_to_post_d():
               'media_hash': 'c241691625515c29b02a4a66f3c947ba71566168'
             }
     labelling_function = lambda frames: {'dog':.7}
-    add_labels_for_image_to_post_d(post, labelling_function)
+    add_labels_for_image_to_post_d(post, labelling_function, {'MAX_IMS_PER_VIDEO':10})
     assert post.get('labels') is not None \
            and post.get('labels') == ['dog'] \
            and post.get('scores') is not None \
@@ -90,9 +90,9 @@ def test_add_labels_for_image_to_post_d():
 
 
 def test_extract_frames_from_im_or_video():
-    frames = extract_frames_from_im_or_video(THIS_SCRIPT_DIR+'/imgs/cat/wzkv43qxa1c51.mp4')
-    frame_hashes = tuple(hashlib.sha1(bytes(f)).hexdigest() for f in frames)
     # Test currently relies on MAX_IMS_PER_VIDEO == 10
+    frames = extract_frames_from_im_or_video(THIS_SCRIPT_DIR+'/imgs/cat/wzkv43qxa1c51.mp4', {'MAX_IMS_PER_VIDEO':10})
+    frame_hashes = tuple(hashlib.sha1(bytes(f)).hexdigest() for f in frames)
     assert frame_hashes == ('5fb877585c64b2b7233a8305f2b9d43243f8a82b',
                              '185ee4dbf2d611f9779750fc29ee55bc54378f70',
                              '1d05cfea3623d250a23313c04f42dbe1eb68efcf',
