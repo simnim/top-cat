@@ -13,11 +13,11 @@ Usage:
     top_cat.py [options]
 
 Options:
-    -h, --help            Show this help message and exit
-    -v, --verbose         Debug info
-    -c, --config FILE     config file location [default: ~/.top_cat/config.toml]
-    -d, --db-file FILE    sqlite3 db file location. Default in toml file.
-
+    -h, --help               Show this help message and exit
+    -v, --verbose            Debug info
+    -c, --config FILE        user config file location [default: ~/.top_cat/config.toml]
+    -d, --db-file FILE       sqlite3 db file location. Default in toml file.
+    -m, --model-to-use NAME  which model to use for labeling? (deeplab or gvision_labeler)
 """
 
 import time
@@ -324,8 +324,9 @@ def maybe_repost_to_slack(post, label, config):
 
 
 def update_config_with_args(config, args):
-    # { 'DB_FILE': '--db-file' ... }
+    # map cli arg style to config style -> { '--db-file': 'DB_FILE' ... }
     args_keys_to_conig_keys = dict(zip(args.keys(),  [ a.strip('-').replace('-','_').upper() for a in args.keys()]))
+    # If the user specified an argument (ex --db-file), then update the config
     config.update([ (args_keys_to_conig_keys[argk], args[argk]) for argk in args.keys() if args[argk] is not None ])
 
 
