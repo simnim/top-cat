@@ -4,6 +4,7 @@ import mimetypes
 import sqlite3
 import aiosql
 import os
+from flask_mobility import Mobility
 
 # Get db conn ready
 from top_cat import get_config, THIS_SCRIPT_DIR
@@ -16,6 +17,7 @@ QUERIES = aiosql.from_path(THIS_SCRIPT_DIR+"/sql", "sqlite3")
 # Got some great tips from https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-ii-templates
 
 app = Flask(__name__)
+Mobility(app)
 
 @app.route('/')
 @app.route('/index')
