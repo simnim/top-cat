@@ -7,3 +7,4 @@ nav ul  { display: flex; list-style: none; margin: 0; padding: 0; }
 nav ul li a { display: block; padding: 0.5rem; }
 .video, .picture { max-width: 100%; height: auto; display: block; margin: 0 auto;}
 .about-div { margin: 0 5px; }
+.coffee { margin-left: auto; }
