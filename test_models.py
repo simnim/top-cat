@@ -5,12 +5,12 @@ import glob
 
 LABELS_TO_CARE_ABOUT = set(['cat', 'dog'])
 
-def get_posts_including_labels_and_correctness(labelling_function):
+def get_posts_including_labels_and_correctness(labelling_function, config):
     media_files = glob.glob('imgs/*/*')
     post_dicts = [{'media_file':i, 'label_to_find':i.split('/')[1]} for i in glob.glob('imgs/*/*')]
 
     for post in post_dicts:
-        add_labels_for_image_to_post_d(post, labelling_function)
+        add_labels_for_image_to_post_d(post, labelling_function, config)
 
     for post in post_dicts:
         # Look for cats and dogs, but make sure we didn't just tack on every label willy nilly
@@ -35,6 +35,6 @@ def test_deeplab(model_to_use):
     config['MODEL_TO_USE'] = model_to_use
     labelling_function = get_labelling_funtion(config)
 
-    post_dicts = get_posts_including_labels_and_correctness(labelling_function)
+    post_dicts = get_posts_including_labels_and_correctness(labelling_function, config)
     assert all([ p['correct_label'] for p in post_dicts])
 

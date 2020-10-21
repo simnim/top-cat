@@ -132,7 +132,7 @@ def test_populate_labels_in_db_for_posts():
     temp_dir = TemporaryDirectory()
     tempf = NamedTemporaryFile()
     db_conn = sqlite3.connect(tempf.name)
-    config = {'VERBOSE':False}
+    config = {'VERBOSE':False, 'MODEL_TO_USE':'test'}
     # set up the tables in the db
     guarantee_tables_exist(db_conn)
     # Run the function

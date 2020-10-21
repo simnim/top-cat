@@ -4,7 +4,12 @@ SELECT post_id, media_hash FROM post WHERE url = :url;
 
 -- name: get_labels_and_scores_for_post
 -- Get the labels we already calculated for a post
-SELECT label, score FROM post_label where post_id = :post_id order by score desc;
+SELECT label, score
+  FROM post_label
+ WHERE post_id = :post_id
+   AND ts_del is NULL
+ ORDER BY score DESC
+;
 
 -- name: did_we_already_repost^
 -- If a post_id has already been reposted to social media then we'll get a row

@@ -2,10 +2,12 @@
 CREATE TABLE IF NOT EXISTS
 post (
     post_id       INTEGER PRIMARY KEY,
-    timestamp_ins text not null default current_timestamp,
     url           text not null,
     media_hash    text not null,
-    title         text not null
+    title         text not null,
+    ts_ins        text not null default current_timestamp,
+    ts_upd        text,
+    ts_del        text
 );
 
 CREATE TABLE IF NOT EXISTS
@@ -14,6 +16,10 @@ post_label (
     post_id       int not null,
     label         text not null,
     score         REAL,
+    model         text,
+    ts_ins        text not null default current_timestamp,
+    ts_upd        text,
+    ts_del        text,
     FOREIGN KEY(post_id) REFERENCES post(post_id)
 );
 
@@ -22,7 +28,9 @@ top_post (
     top_post_id   INTEGER PRIMARY KEY,
     post_id       int not null,
     label         text not null,
-    timestamp_ins text not null default current_timestamp,
+    ts_ins        text not null default current_timestamp,
+    ts_upd        text,
+    ts_del        text,
     FOREIGN KEY(post_id) REFERENCES post(post_id)
 );
 

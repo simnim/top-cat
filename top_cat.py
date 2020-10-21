@@ -270,7 +270,7 @@ def populate_labels_in_db_for_posts(
                 if config['VERBOSE']:
                     print('    ',label,'=',score, file=sys.stderr)
                 if label != 'background':
-                    QUERIES.record_post_label(db_conn, post_id=post_id, label=label, score=score)
+                    QUERIES.record_post_label(db_conn, post_id=post_id, label=label, score=score, model=config['MODEL_TO_USE'])
                     db_conn.commit()
         else:
             post['post_id'] = image_found[0]
