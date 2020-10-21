@@ -144,9 +144,8 @@ def test_populate_labels_in_db_for_posts():
             , config
         )
     # check that the labels found their way into the db
-    db_cur = db_conn.cursor()
-    labels_in_db = db_cur.execute('select * from post_label;').fetchall()
-    assert labels_in_db == [(1, 1, 'dog', 0.7)]
+    labels_in_db = QUERIES.get_labels_and_scores_for_post(db_conn, 1)
+    assert labels_in_db == [('dog', 0.7)]
 
 # # Yeah... I don't want to spam my channels... unfortunately I'll have to test this manually...
 # def test_repost_to_slack():
@@ -170,12 +169,11 @@ def test_maybe_repost_to_social_media():
     tempf = NamedTemporaryFile()
     db_conn = sqlite3.connect(tempf.name)
     guarantee_tables_exist(db_conn)
-    db_cur = db_conn.cursor()
     # because top_post has a constraint: FOREIGN KEY(post_id) REFERENCES post(post_id)
-    db_cur.execute("insert into post values (1, '2020-08-19 23:47:16','https://i.redd.it/ld0ct5djqkh51.jpg', 'c241691625515c29b02a4a66f3c947ba71566168', 'this is a test');")
+    QUERIES.record_post(db_conn, url='https://i.redd.it/ld0ct5djqkh51.jpg', media_hash='c241691625515c29b02a4a66f3c947ba71566168', title='this is a test')
     maybe_repost_to_social_media(reddit_response_json, config, db_conn)
     # Now double check we added a row to top_post;
-    assert db_cur.execute('select post_id, label from top_post;').fetchall() == [(1, 'dog')]
+    assert QUERIES.did_we_already_repost(db_conn, 1, 'dog') == (1, 'dog')
 
 
 def test_update_config_with_args():

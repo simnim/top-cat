@@ -249,7 +249,7 @@ def populate_labels_in_db_for_posts(
     # Make sure we have the images and labels stashed for any potentially new posts
     # Usually we just skip adding labels for a post since it's probably been in the top N for a few hours already and had many chances to be labelled already
     for post_i, post in enumerate(reddit_response_json):
-        image_found = QUERIES.get_top_post_given_url(db_conn, **post)
+        image_found = QUERIES.get_post_given_url(db_conn, **post)
         if not image_found:
             # Did not find the url, must be a new post. (or maybe a repost...)
             add_image_content_to_post_d(post,temp_dir)
@@ -258,7 +258,7 @@ def populate_labels_in_db_for_posts(
             #Check if we already have the file in the db
             QUERIES.record_post(db_conn, **post)
             db_conn.commit()
-            post_id = QUERIES.get_top_post_given_url(db_conn, **post)[0]
+            post_id = QUERIES.get_post_given_url(db_conn, **post)[0]
             post['post_id'] = post_id
 
             # Print out each label and label's score. Also store each result in the db.)

@@ -1,4 +1,4 @@
--- name: get_top_post_given_url^
+-- name: get_post_given_url^
 -- Get the post_id and media_hash associated with a url
 SELECT post_id, media_hash FROM post WHERE url = :url;
 
