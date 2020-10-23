@@ -28,7 +28,7 @@ def test_guarantee_tables_exist():
     db_cur = db_conn.cursor()
     db_cur.execute('select type, name from sqlite_master;')
     db_objects = frozenset(db_cur.fetchall())
-    assert db_objects == ( frozenset({('index', 'media_media_hash_index'),
+    assert db_objects == ( frozenset({('index', 'post_label_post_id_index'),
                                ('index', 'media_url_index'),
                                ('index', 'top_post_post_id_index'),
                                ('table', 'post'),
@@ -37,13 +37,16 @@ def test_guarantee_tables_exist():
 
 
 
+@pytest.mark.net
 def test_fix_imgur_url_video():
     assert fix_imgur_url('https://imgur.com/zH3iA75') == 'https://i.imgur.com/zH3iA75.mp4'
+@pytest.mark.net
 def test_fix_imgur_pic():
     assert fix_imgur_url('https://imgur.com/2cfU6dh') in [
           'https://i.imgur.com/2cfU6dh.jpg',
           'https://i.imgur.com/2cfU6dh.jpeg'
         ]
+@pytest.mark.net
 def test_fix_imgur_gifv():
     assert fix_imgur_url('https://imgur.com/zH3iA75') == 'https://i.imgur.com/zH3iA75.mp4'
 
@@ -51,17 +54,20 @@ def test_fix_imgur_gifv():
 def test_fix_giphy_url():
     assert fix_giphy_url('https://thumbs.gfycat.com/HorribleFakeEmperorshrimp-size_restricted.gif') \
                 == 'https://thumbs.gfycat.com/HorribleFakeEmperorshrimp-mobile.mp4'
+@pytest.mark.net
 def test_fix_redd_url():
     assert fix_redd_url('https://v.redd.it/midbybt5fmh51') == 'https://v.redd.it/midbybt5fmh51/DASH_720.mp4'
 # def test_fix_url_in_dict():
 #     pass
 
+@pytest.mark.net
 def test_query_reddit_api():
     reddit_response_json = query_reddit_api({'MAX_REDDIT_API_ATTEMPTS':10, 'VERBOSE':False, 'MAX_POSTS_TO_PROCESS':10})
     assert type(reddit_response_json) == list \
             and len(reddit_response_json) >= 1 \
             and reddit_response_json[0].keys() == frozenset(['title', 'url', 'orig_url', 'gfycat'])
 
+@pytest.mark.net
 def test_add_image_content_to_post_d():
     temp_dir = TemporaryDirectory()
     post = {  'title': 'this is a test',
@@ -183,7 +189,8 @@ def test_update_config_with_args():
     assert config['DB_FILE'] == 'b_file'
 
 
-# @pytest.mark.slow
+@pytest.mark.net
+@pytest.mark.slow
 def test_get_labelling_funtion():
     base_config = get_config('/dev/null')
     labelling_func_deeplab = get_labelling_funtion(base_config)

@@ -2,3 +2,7 @@
 addopts = "-v"
 # tensorflow is complaining about things outside my control... at least with tf=2.3.0 on py38
 filterwarnings = "ignore::DeprecationWarning:tensorflow"
+markers = [
+    'net: requires internet access',
+    'slow: takes a minute'
+]

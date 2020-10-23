@@ -29,6 +29,7 @@ def get_posts_including_labels_and_correctness(labelling_function, config):
             print(f'#WARNING: Wrong label for {post["media_file"]}, expected {post["label_to_find"]}.', file=sys.stderr)
     return post_dicts
 
+@pytest.mark.slow
 @pytest.mark.parametrize("model_to_use", ['deeplab', 'gvision_labeler'] )
 def test_deeplab(model_to_use):
     config = get_config()

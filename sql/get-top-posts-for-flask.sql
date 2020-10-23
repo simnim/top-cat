@@ -3,10 +3,10 @@
 select
       p.url as media
     , p.title
-    , p.timestamp_ins as noticed_at
+    , p.ts_ins as noticed_at
 from
         top_post tp
     join post p using (post_id)
 where tp.label = :label
-order by tp.timestamp_ins desc
+order by tp.ts_ins desc
 limit 10;

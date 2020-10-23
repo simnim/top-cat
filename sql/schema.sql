@@ -34,11 +34,6 @@ top_post (
     FOREIGN KEY(post_id) REFERENCES post(post_id)
 );
 
-CREATE INDEX IF NOT EXISTS
-media_media_hash_index
-on  post (
-        media_hash
-    );
 
 CREATE INDEX IF NOT EXISTS
 media_url_index
@@ -49,5 +44,11 @@ on  post (
 CREATE INDEX IF NOT EXISTS
 top_post_post_id_index
 on  top_post (
+        post_id
+    );
+
+CREATE INDEX IF NOT EXISTS
+post_label_post_id_index
+on  post_label (
         post_id
     );
