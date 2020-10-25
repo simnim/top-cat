@@ -167,9 +167,14 @@ def query_reddit_api(config, limit=10):
     assert j.get("data") is not None, "Can't seem to query the reddit api! (Maybe try again later?)"
     # We've got the data for sure now.
     nice_jsons = pyjq.all('.data.children[].data|{title, url, orig_url: .url, gfycat: .media.oembed.thumbnail_url}', j)
-    # fix imgur and giphy urls:
-    nice_jsons = [ {**d, 'url':fix_url_in_dict(d)} for d in nice_jsons ]
-    return nice_jsons
+    # Fix imgur and giphy urls. Some rare urls break v.redd.it so make it durable to that issue... #FIXME: broken for id = lohoa87sas331
+    to_ret_jsons = []
+    for d in nice_jsons:
+        try:
+            to_ret_jsons.append( {**d, 'url':fix_url_in_dict(d)} )
+        except:
+            print('#WARNING: failed for {url}. Skipping this post...')
+    return to_ret_jsons
 
 
 def add_image_content_to_post_d(post, temp_dir):
