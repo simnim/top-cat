@@ -173,7 +173,7 @@ def query_reddit_api(config, limit=10):
         try:
             to_ret_jsons.append( {**d, 'url':fix_url_in_dict(d)} )
         except:
-            print('#WARNING: failed for {url}. Skipping this post...')
+            print(f'#WARNING: failed for {url}. Skipping this post...')
     return to_ret_jsons
 
 
