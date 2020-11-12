@@ -4,7 +4,7 @@ This project is just for fun. I'm not making any money from it.
 
 If the top post has a cat in it, then it's a top cat, if it's got a dog, then it's a top dog. You can also customize what labels to look for with the user config file.
 
-This project also comes with a flask app so you can browse the latest top cat and dog in a web browser! I'm hosting this app @ https://simnim.xyz/top/cat so feel free to check it out.
+This project also comes with a flask app so you can browse the latest top cat and dog in a web browser! I'm hosting this app @ https://topcat.app/top/cat so feel free to check it out.
 
 # Install
 
