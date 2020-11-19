@@ -14,7 +14,11 @@ def flask_app_server():
     flask_proc = sp.Popen(["flask", "run"], stdout=sp.PIPE, stderr=sp.PIPE)
     time.sleep(1)
     try:
-        yield flask_proc
+        first_stderr = flask_proc.stderr.readline()
+        if b" * Running on http:" in first_stderr:
+            yield flask_proc
+        else:
+            raise Exception(flask_proc.stderr.read().strip().split("\n")[-1])
     finally:
         flask_proc.kill()
 
