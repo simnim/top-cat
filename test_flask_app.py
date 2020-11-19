@@ -18,7 +18,9 @@ def flask_app_server():
         if b" * Running on http:" in first_stderr:
             yield flask_proc
         else:
-            raise Exception(flask_proc.stderr.read().strip().split("\n")[-1])
+            raise Exception(
+                flask_proc.stderr.read().decode("utf-8").strip().split("\n")[-1]
+            )
     finally:
         flask_proc.kill()
 
