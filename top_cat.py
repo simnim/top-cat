@@ -82,9 +82,23 @@ def get_config(config_file_loc="~/.top_cat/config.toml"):
     # Make sure to crash if any config options are specified that we don't know what to do with
     available_opts = list(default_config.keys())
     for user_config_opt in user_config.keys():
-        assert (
-            user_config_opt in available_opts
-        ), f"# ERROR: You specified an unsopported option: {user_config_opt} \n# Maybe you meant {available_opts[np.argmax([difflib.SequenceMatcher(None, user_config_opt, opt).ratio() for opt in available_opts])]}\n# Possible choices: {available_opts}"
+        closest_opt_key = available_opts[
+            np.argmax(
+                [
+                    difflib.SequenceMatcher(None, user_config_opt, opt).ratio()
+                    for opt in available_opts
+                ]
+            )
+        ]
+        assert user_config_opt in available_opts, re.sub(
+            r"^\s*",
+            "",
+            f"""
+            # ERROR: You specified an unsopported option: {user_config_opt}
+            # Maybe you meant {closest_opt_key}
+            # Possible choices: {available_opts}""",
+            flags=re.M,
+        )
 
     final_config = {**default_config, **user_config}
 
@@ -133,7 +147,8 @@ def fix_imgur_url(url):
                     possible_media_links,
                 )
             )
-            # For videos it gives us a preview, and there's other possible junk... so prioritize videos then images then fallback on whatever we can...
+            # For videos it gives us a preview, and there's other possible junk
+            #   so prioritize videos then images then fallback on whatever we can
             for suf in ["mp4", "webm", "gif", "png", "jpg", "jpeg"]:
                 if suf in suffix_mapto_link:
                     return suffix_mapto_link[suf]
@@ -204,7 +219,8 @@ def query_reddit_api(config, limit=10):
         ".data.children[].data|{title, url, orig_url: .url, gfycat: .media.oembed.thumbnail_url}",
         j,
     )
-    # Fix imgur and giphy urls. Some rare urls break v.redd.it so make it durable to that issue... #FIXME: broken for id = lohoa87sas331
+    # Fix imgur and giphy urls. Some rare urls break v.redd.it
+    #   so make it durable to that issue... #FIXME: broken for id = lohoa87sas331
     to_ret_jsons = []
     for d in nice_jsons:
         try:
@@ -217,7 +233,8 @@ def query_reddit_api(config, limit=10):
 def add_image_content_to_post_d(post, temp_dir):
     " Add the image data to our post dictionary. Don't bother if it's already there. "
     if post.get("media_file") is None:
-        temp_fname = f"{temp_dir.name}/{''.join(random.choice(string.ascii_lowercase) for i in range(20))}.{post['url'].split('.')[-1]}"
+        rand_chars = "".join(random.choice(string.ascii_lowercase) for i in range(20))
+        temp_fname = f"{temp_dir.name}/{rand_chars}.{post['url'].split('.')[-1]}"
         post["media_file"] = temp_fname
         open(temp_fname, "wb").write(requests.get(post["url"], stream=True).content)
         post["media_hash"] = hashlib.sha1(open(temp_fname, "rb").read()).hexdigest()
@@ -294,7 +311,8 @@ def populate_labels_in_db_for_posts(
     reddit_response_json, labelling_function, temp_dir, db_conn, config
 ):
     # Make sure we have the images and labels stashed for any potentially new posts
-    # Usually we just skip adding labels for a post since it's probably been in the top N for a few hours already and had many chances to be labelled already
+    # Usually we just skip adding labels for a post since it's probably been in the top N
+    #    for a few hours already and had many chances to be labelled already
     for post_i, post in enumerate(reddit_response_json):
         image_found = QUERIES.get_post_given_url(db_conn, **post)
         if not image_found:
@@ -313,7 +331,6 @@ def populate_labels_in_db_for_posts(
                 print("Labels for", file=sys.stderr)
                 print(post["title"], ":", post["url"], file=sys.stderr)
             for label, score in zip(post["labels"], post["scores"]):
-                # Sometimes a few pixels get ridiculous labels... 10% of the pixels having a label seems like a decent cutoff...
                 if config["VERBOSE"]:
                     print("    ", label, "=", score, file=sys.stderr)
                 if label != "background":
