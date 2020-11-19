@@ -1,5 +1,6 @@
 # from top_cat import *
 # import pytest
+import os
 import re
 import subprocess as sp
 import sys
@@ -11,7 +12,12 @@ from contextlib import contextmanager
 @contextmanager
 def flask_app_server():
     # Run the flask app
-    flask_proc = sp.Popen(["flask", "run"], stdout=sp.PIPE, stderr=sp.PIPE)
+    flask_proc = sp.Popen(
+        ["flask", "run"],
+        stdout=sp.PIPE,
+        stderr=sp.PIPE,
+        env=dict(os.environ, FLASK_APP="serve_top_posts.py"),
+    )
     time.sleep(1)
     try:
         first_stderr = flask_proc.stderr.readline()
