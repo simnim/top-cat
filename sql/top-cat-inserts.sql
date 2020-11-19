@@ -9,4 +9,3 @@ INSERT INTO post_label (post_id, label, score, model) values (:post_id, :label, 
 -- name: record_the_repost!
 -- We found a top cat/dog, record it so we only reshare it once
 INSERT INTO top_post (post_id,label) values (:post_id, :label);
-

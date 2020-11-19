@@ -5,4 +5,3 @@ UPDATE post_label
  where post_id = :post_id
    and ts_del is null
 ;
-
