@@ -180,9 +180,13 @@ def fix_redd_url(url):
 
 def fix_url_in_dict(d):
     if d["gfycat"]:
-        return fix_giphy_url(d["gfycat"])
+        to_ret = fix_giphy_url(d["gfycat"])
     else:
-        return fix_redd_url(fix_imgur_url(d["url"]))
+        to_ret = fix_redd_url(fix_imgur_url(d["url"]))
+    # Double check the url actually exists
+    if requests.head(to_ret).status_code != 200:
+        raise Exception(f"Something's wrong with '{to_ret}'")
+    return to_ret
 
 
 def query_reddit_api(config, limit=10):
