@@ -19,6 +19,7 @@ from top_cat import (
     fix_redd_url,
     get_config,
     get_labelling_funtion,
+    get_sha1_lowmemuse,
     guarantee_tables_exist,
     maybe_repost_to_social_media,
     populate_labels_in_db_for_posts,
@@ -135,7 +136,17 @@ def test_add_image_content_to_post_d():
         "gfycat": None,
     }
     add_image_content_to_post_d(post, temp_dir)
-    assert post.get("media_file") is not None and post.get("media_hash") is not None
+    assert (
+        post.get("media_file") is not None
+        and post.get("media_hash") == "c241691625515c29b02a4a66f3c947ba71566168"
+    )
+
+
+def test_get_sha1_lowmemuse():
+    assert (
+        get_sha1_lowmemuse(THIS_SCRIPT_DIR + "/imgs/dog/ld0ct5djqkh51.jpg")
+        == "c241691625515c29b02a4a66f3c947ba71566168"
+    )
 
 
 def test_add_labels_for_image_to_post_d():

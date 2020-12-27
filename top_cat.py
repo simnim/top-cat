@@ -29,6 +29,7 @@ import os
 import pprint
 import random
 import re
+import shutil
 import sqlite3
 
 # from matplotlib import pyplot as plt
@@ -234,14 +235,27 @@ def query_reddit_api(config, limit=10):
     return to_ret_jsons
 
 
+def get_sha1_lowmemuse(fname):
+    # https://stackoverflow.com/questions/22058048/hashing-a-file-in-python
+    sha1 = hashlib.sha1()
+    with open(fname, "rb") as f:
+        while True:
+            data = f.read(65536)  # 64kb chunks
+            if not data:
+                break
+            sha1.update(data)
+    return sha1.hexdigest()
+
+
 def add_image_content_to_post_d(post, temp_dir):
     " Add the image data to our post dictionary. Don't bother if it's already there. "
     if post.get("media_file") is None:
         rand_chars = "".join(random.choice(string.ascii_lowercase) for i in range(20))
         temp_fname = f"{temp_dir.name}/{rand_chars}.{post['url'].split('.')[-1]}"
         post["media_file"] = temp_fname
-        open(temp_fname, "wb").write(requests.get(post["url"], stream=True).content)
-        post["media_hash"] = hashlib.sha1(open(temp_fname, "rb").read()).hexdigest()
+        with open(temp_fname, "wb") as m_file:
+            shutil.copyfileobj(requests.get(post["url"], stream=True).raw, m_file)
+        post["media_hash"] = get_sha1_lowmemuse(temp_fname)
 
 
 def add_labels_for_image_to_post_d(post, labelling_function, config):
