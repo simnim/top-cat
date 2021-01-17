@@ -2,9 +2,8 @@
 
 import datetime
 import os
-
-# import sys
 import subprocess as sp
+import sys
 
 import requests
 
@@ -12,16 +11,23 @@ from top_cat import THIS_SCRIPT_DIR, get_config
 
 config = get_config()
 
-log_file_path = os.path.expanduser(
+log_file_prefix = os.path.expanduser(
     f"~/top_cat_logs/{str(datetime.date.today())}/{str(datetime.datetime.now().time())[:8]}"
 )
 
-sp.call(f'mkdir -p "{os.path.dirname(log_file_path)}"', shell=True)
+# Exit early if top_cat was already running before this started.
+# Count how many top_cat procs. This proc contributes 1.
+running_procs = sp.check_output("ps aux", shell=True).decode("utf-8")
+if len([line for line in running_procs.split("\n") if "top_cat.py" in line]) > 1:
+    sys.exit()
+
+sp.call(f'mkdir -p "{os.path.dirname(log_file_prefix)}"', shell=True)
 
 execution = sp.run(
     [f"{THIS_SCRIPT_DIR}/top_cat.py", "-v"], stderr=sp.STDOUT, stdout=sp.PIPE
 )
 
+log_file_path = log_file_prefix + "_" + str(datetime.datetime.now().time())[:8]
 open(log_file_path, "a").write(execution.stdout.decode("utf-8"))
 
 # Complain about errors if necessary
