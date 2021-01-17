@@ -16,9 +16,8 @@ log_file_prefix = os.path.expanduser(
 )
 
 # Exit early if top_cat was already running before this started.
-# Count how many top_cat procs. This proc contributes 1.
 running_procs = sp.check_output("ps aux", shell=True).decode("utf-8")
-if len([line for line in running_procs.split("\n") if "top_cat.py" in line]) > 1:
+if len([line for line in running_procs.split("\n") if "top_cat.py" in line]) > 0:
     sys.exit()
 
 sp.call(f'mkdir -p "{os.path.dirname(log_file_prefix)}"', shell=True)
