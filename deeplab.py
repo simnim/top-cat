@@ -125,7 +125,7 @@ def get_labelling_func_given_config(config):
     from deeplab import DeepLabModel, get_labels_from_frames_deeplab
 
     if int(config["PROCS_TO_USE"]) <= 0:
-        cores_to_use = max(1, multiprocessing.cpu_count() - int(config["PROCS_TO_USE"]))
+        cores_to_use = max(1, multiprocessing.cpu_count() + int(config["PROCS_TO_USE"]))
     else:
         cores_to_use = int(config["PROCS_TO_USE"])
     # For deeplab this seems to be the setting that matters for cpu count
