@@ -34,7 +34,9 @@ MAX_REDDIT_API_ATTEMPTS = 20
 ## You can also add a new model by adding a new python file into this directory that implements `get_labelling_func_given_config(config)`
 MODEL_TO_USE = "deeplab"
 
-
+# Set this variable to limit how many cores tensorflow can use.
+# 0 -> use every core. N -> use N cores. -N -> Use all - N cores.
+PROCS_TO_USE = "-1"
 
 # If you want to post to a slack channel, follow instructions in README
 POST_TO_SLACK_TF = false

@@ -18,6 +18,7 @@ Options:
     -c, --config FILE        user config file location [default: ~/.top_cat/config.toml]
     -d, --db-file FILE       sqlite3 db file location. Default in toml file.
     -m, --model-to-use NAME  which model to use for labeling? (deeplab or gvision_labeler)
+    -p, --procs-to-use NUM   How many processors to use? Default in toml file.
 """
 
 import difflib
@@ -102,6 +103,10 @@ def get_config(config_file_loc="~/.top_cat/config.toml"):
         )
 
     final_config = {**default_config, **user_config}
+
+    assert re.match(
+        r"-?\d+", final_config["PROCS_TO_USE"]
+    ), f"PROCS_TO_USE must be integer, you input {final_config['PROCS_TO_USE']}"
 
     # If we plan on posting to social media, let's make sure we have tokens to try
     assert not final_config["POST_TO_SLACK_TF"] or (
@@ -482,7 +487,7 @@ def main():
     )
 
     if config["VERBOSE"]:
-        pprint.pp(reddit_response_json)
+        pprint.pprint(reddit_response_json)
 
     maybe_repost_to_social_media(reddit_response_json, config, db_conn)
 

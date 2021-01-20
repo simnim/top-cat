@@ -1,21 +1,14 @@
 # https://github.com/tensorflow/models/blob/master/research/deeplab/deeplab_demo.ipynb
 # Mostly taken from ^ but cleaned and modified a bit to be easier for me to use.
 
+import multiprocessing
 import os
-
-# from io import BytesIO
 import tarfile
 from collections import Counter
 
-# from matplotlib import gridspec
-# from matplotlib import pyplot as plt
 import numpy as np
 import tensorflow as tf
 from PIL import Image
-
-# import tempfile
-# from six.moves import urllib
-
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -126,13 +119,17 @@ def get_labels_from_frames_deeplab(model, frames_in_video):
 
 
 def get_labelling_func_given_config(config):
-    ## For importing
-    import tensorflow as tf
-
     # Turn off useless TF messages
     os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
     from deeplab import DeepLabModel, get_labels_from_frames_deeplab
+
+    if int(config["PROCS_TO_USE"]) <= 0:
+        cores_to_use = max(1, multiprocessing.cpu_count() - int(config["PROCS_TO_USE"]))
+    else:
+        cores_to_use = int(config["PROCS_TO_USE"])
+    # For deeplab this seems to be the setting that matters for cpu count
+    tf.config.threading.set_intra_op_parallelism_threads(cores_to_use)
 
     # Get the vision model ready
     deeplabv3_model_tar = tf.keras.utils.get_file(
