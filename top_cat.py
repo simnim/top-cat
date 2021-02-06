@@ -198,12 +198,14 @@ def fix_url_in_dict(d):
 def query_reddit_api(config, limit=10):
     # Try really hard to get reddit api results. Sometimes the reddit API gives back empty jsons.
     for attempt in range(config["MAX_REDDIT_API_ATTEMPTS"]):
-        r = requests.get(
-            f"https://www.reddit.com/r/aww/top.json?limit={config['MAX_POSTS_TO_PROCESS']}",
-            headers={"User-Agent": "linux:top-cat:v0.2.0"},
-        )
-        j = r.json()
-        if j.get("data") is not None:
+        try:
+            reddit_json = requests.get(
+                f"https://www.reddit.com/r/aww/top.json?limit={config['MAX_POSTS_TO_PROCESS']}",
+                headers={"User-Agent": "linux:top-cat:v0.2.0"},
+            ).json()
+        except Exception:
+            reddit_json = {}
+        if reddit_json.get("data") is not None:
             if config["VERBOSE"]:
                 print(
                     "# Succesfully queried the reddit api after",
@@ -222,12 +224,12 @@ def query_reddit_api(config, limit=10):
                 )
         sleep(0.1)
     assert (
-        j.get("data") is not None
+        reddit_json.get("data") is not None
     ), "Can't seem to query the reddit api! (Maybe try again later?)"
     # We've got the data for sure now.
     nice_jsons = pyjq.all(
         ".data.children[].data|{title, url, orig_url: .url, gfycat: .media.oembed.thumbnail_url}",
-        j,
+        reddit_json,
     )
     # Fix imgur and giphy urls. Some rare urls break v.redd.it
     #   so make it durable to that issue... #FIXME: broken for id = lohoa87sas331
