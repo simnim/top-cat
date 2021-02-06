@@ -95,10 +95,13 @@ def get_config(config_file_loc="~/.top_cat/config.toml"):
         assert user_config_opt in available_opts, re.sub(
             r"^\s*",
             "",
-            f"""
-            # ERROR: You specified an unsopported option: {user_config_opt}
-            # Maybe you meant {closest_opt_key}
-            # Possible choices: {available_opts}""",
+            " ".join(
+                [
+                    f"# ERROR: You specified an unsopported option: {user_config_opt}",
+                    f"Maybe you meant {closest_opt_key}",
+                    f"Possible choices: {available_opts}",
+                ]
+            ),
             flags=re.M,
         )
 
