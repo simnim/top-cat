@@ -2,9 +2,9 @@
 Automate finding cute cat and dog pictures from /r/aww and remember them forever.
 This project is just for fun. I'm not making any money from it.
 
-If the top post has a cat in it, then it's a top cat, if it's got a dog, then it's a top dog. You can also customize what labels to look for with the user config file.
+If the top post on /r/aww has a cat in it, then it's a top cat, if it's got a dog, then it's a top dog. You can also customize what labels to look for with the user config file.
 
-This project also comes with a flask app so you can browse the latest top cat and dog in a web browser! I'm hosting this app @ https://topcat.app/top/cat so feel free to check it out.
+To see the outputs of this tool, check out my website @ http://topcat.app and click on "Top Cat" or "Top Dog" in the nav bar up top. Source code for my website is also available @ https://github.com/simnim/nh_website
 
 # Install
 
@@ -44,6 +44,9 @@ cd ~/git/top-cat
 Check out `default_config.toml` for settings and an explanation of each variable
 
 
+# Available Computer Vision models:
+For this project you can use one of two models I've configured or roll your own. This is configurable with the `MODEL_TO_USE` config option. The two I've made easy to use are deeplabv3 -> `deeplab.py` and google's vision api -> `gvision_labeler.py`. To roll your own, simply create another python file in the project directory and implement get_labelling_func_given_config (see default_config.toml for more details) then of course set `MODEL_TO_USE` to the name of your new file without the .py suffix.
+
 
 ## You can also set up CRON to call top_cat.py every 5 mins
 `./top_cat.py` will only ever query the google vision api once per unique image/video url. Similarly, it'll also only post to slack once per new top cat/dog (if you set up slack integration)
@@ -63,8 +66,12 @@ Check out `default_config.toml` for settings and an explanation of each variable
 
 # How to run tests
 ```
+# All tests
 pytest
-```
 
-# How to run flask webserver
-If you have python-dotenv installed you can just do `flask run` in the project dir, otherwise you can do `export FLASK_APP=serve_top_posts.py; flask run`  (Caveot: the navbar up top assumes you're processing top cat and top dog, but no other labels...)
+# Skip the slow tests (vision model tests)
+pytest -k 'not slow'
+
+# Skip tests that need an internet connection AND the slow tests
+pytest -k 'not net and not slow'
+```

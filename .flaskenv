@@ -1,1 +1,0 @@
-FLASK_APP=serve_top_posts.py

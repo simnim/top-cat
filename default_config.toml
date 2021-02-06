@@ -32,6 +32,9 @@ MAX_REDDIT_API_ATTEMPTS = 20
 # gvision_labeler (google vision api) uses minimal memory and can run on gcloud or aws free tier linux boxes (~$1/month api calls)
 # deeplab is a tensorflow research model that requires more memory, so can't run on free tier servers
 ## You can also add a new model by adding a new python file into this directory that implements `get_labelling_func_given_config(config)`
+## get_labelling_func_given_config should take as input the configuration dict and return a function that accepts as input a list
+##  of PIL images and outputs a dict of labels -> scores. This means that get_labelling_func_given_config should set up any relevant
+##  models, api credentials, etc and return a closure that includes that state. See gvision_labeler for a simle implementation.
 MODEL_TO_USE = "deeplab"
 
 # Set this variable to limit how many cores tensorflow can use.
