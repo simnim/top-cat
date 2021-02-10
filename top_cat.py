@@ -242,6 +242,8 @@ def query_reddit_api(config, limit=10):
             to_ret_jsons.append({**d, "url": fix_url_in_dict(d)})
         except Exception:
             print(f'#WARNING: failed for {d["url"]}. Skipping this post...')
+    if config["VERBOSE"]:
+        pprint.pprint(to_ret_jsons)
     return to_ret_jsons
 
 

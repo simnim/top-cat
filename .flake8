@@ -5,4 +5,4 @@
 # W503 because of a dumb conflict with black
 ignore = E203, E266, W503
 max-line-length = 127
-max-complexity = 10
+max-complexity = 12
