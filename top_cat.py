@@ -32,14 +32,8 @@ import random
 import re
 import shutil
 import sqlite3
-
-# from matplotlib import pyplot as plt
 import string
-
-# import facebook
 import sys
-
-# from io import BytesIO, StringIO
 from tempfile import TemporaryDirectory
 from time import sleep
 
@@ -47,15 +41,14 @@ import aiosql
 import cv2
 import numpy as np
 import pyjq
-
-# import time
 import requests
+import stackprinter
 import toml
 from docopt import docopt
 from PIL import Image
 
-# from collections import Counter
-
+# Make stack traces way better
+stackprinter.set_excepthook(style="darkbg2")
 
 # So we can copy paste into ipython for debugging. Assuming we run ipython from the repo dir
 if hasattr(__builtins__, "__IPYTHON__"):

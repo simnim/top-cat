@@ -11,3 +11,4 @@ google-cloud-vision
 flask
 aiosql
 Flask-Mobility
+stackprinter
