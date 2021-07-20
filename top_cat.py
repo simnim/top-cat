@@ -253,7 +253,7 @@ def get_sha1_lowmemuse(fname):
 
 
 def add_image_content_to_post_d(post, temp_dir):
-    " Add the image data to our post dictionary. Don't bother if it's already there. "
+    "Add the image data to our post dictionary. Don't bother if it's already there."
     if post.get("media_file") is None:
         rand_chars = "".join(random.choice(string.ascii_lowercase) for i in range(20))
         temp_fname = f"{temp_dir.name}/{rand_chars}.{post['url'].split('.')[-1]}"

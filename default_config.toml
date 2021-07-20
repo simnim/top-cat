@@ -28,6 +28,10 @@ MAX_POSTS_TO_PROCESS = 10
 MAX_REDDIT_API_ATTEMPTS = 20
 
 
+# Max runtime in seconds.
+# Sometimes top_cat.py freezes for mystery reasons so we'll kill it after the max runtime in cron.py
+MAX_TOP_CAT_CRON_RUNTIME = 302400
+
 # Choices are currently "deeplab" or "gvision_labeler".
 # gvision_labeler (google vision api) uses minimal memory and can run on gcloud or aws free tier linux boxes (~$1/month api calls)
 # deeplab is a tensorflow research model that requires more memory, so can't run on free tier servers
