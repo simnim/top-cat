@@ -24,9 +24,12 @@ running_procs = [
     re.match(
         r"(.+\s+.+\s+.+\s+.+\s+[^\s]+)\s+(\d+)\s+(.*)", line, flags=re.M | re.S
     ).groups()
-    for line in sp.check_output("ps -a -x -o lstart,pid,command", shell=True)
+    for line in sp.check_output(
+        "ps -a -x -o lstart,pid,command | tail -n+2", shell=True
+    )
     .decode("utf-8")
     .split("\n")
+    if line
 ]
 
 # If top_cat.py has been running too long, then we'll kill previous proc and end early.
