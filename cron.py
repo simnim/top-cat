@@ -13,7 +13,7 @@ from top_cat import THIS_SCRIPT_DIR, get_config
 config = get_config()
 
 log_file_prefix = os.path.expanduser(
-    f"~/top_cat_logs/{str(datetime.today())}/{str(datetime.now().time())[:8]}"
+    f"~/top_cat_logs/{str(datetime.now())[:19].replace(' ','/')}"
 )
 
 

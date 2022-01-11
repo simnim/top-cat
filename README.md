@@ -75,3 +75,11 @@ pytest -k 'not slow'
 # Skip tests that need an internet connection AND the slow tests
 pytest -k 'not net and not slow'
 ```
+
+# Support my work:
+* Dollars:
+    * https://www.buymeacoffee.com/simnim
+* Bitcoin:
+    * 1HgfshpzDQErwEDvhB7RXWWxPGsE1Q9Mxy
+* Etherium
+    * 0x70c8565654059dcD4712487B339B241bcc95B625
